@@ -5,7 +5,17 @@ the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
 
-# Install
+# AppImage
+
+Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage):
+
+```sh
+curl --location -o levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
+chmod +x levior
+./levior
+```
+
+# Manual Install
 
 ```sh
 pip install -e .
@@ -31,7 +41,7 @@ levior --socks5-proxy localhost:9050
 levior --tor
 ```
 
-Open your Gemini browser and open *gemini://localhost* or *//localhost*.
+Open your Gemini browser and go to *gemini://localhost* or *//localhost*.
 
 ## URLs
 
