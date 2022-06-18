@@ -1,0 +1,103 @@
+# image: "registry.gitlab.com/cipres/ipfs-void-storm:latest"
+image: python:3.9
+
+variables:
+  VERSION: "1.0.0"
+  TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
+
+  WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+  WHEEL_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+
+  APPIMAGE_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
+  APPIMAGE_LATEST_FILENAME: "${CI_PROJECT_NAME}-latest-x86_64.AppImage"
+  APPIMAGE_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
+
+  DOCKER_REPOSITORY: "${CI_REGISTRY}/cipres/${CI_PROJECT_NAME}"
+
+stages:
+  - build
+  - release
+  - docker
+
+build:
+  stage: build
+  only:
+    - master
+    - devel
+  script:
+    - apt-get -y update
+    - apt-get install -y fuse
+
+    - python3 -m pip install --upgrade pip
+    - python3 -m venv venv
+    - source venv/bin/activate
+
+    - pip install wheel
+    - pip install flake8
+
+    - flake8 levior
+
+    - python3 setup.py build install
+    - python3 setup.py sdist bdist_wheel
+
+    - .gitlab/appimage-build
+
+  artifacts:
+    paths:
+      - "*.AppImage"
+      - dist/*.whl
+
+release:
+  image: registry.gitlab.com/gitlab-org/release-cli
+  stage: release
+  only:
+    - master
+    - devel
+  script:
+    - apk add curl
+
+    - >
+      curl
+      --request DELETE
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --header "PRIVATE-TOKEN: ${GITLAB_PRIVATE_TOKEN}"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${TAGNAME}"
+
+    - >
+     curl --header "JOB-TOKEN: $CI_JOB_TOKEN"
+     --upload-file
+     dist/${WHEEL_FILENAME}
+     ${WHEEL_ARTIFACT_URL}
+
+    - >
+     curl --header "JOB-TOKEN: $CI_JOB_TOKEN"
+     --upload-file
+     ${APPIMAGE_FILENAME}
+     ${APPIMAGE_ARTIFACT_URL}
+
+    - >
+      release-cli create
+      --name release-${CI_COMMIT_SHA}
+      --description README.md
+      --tag-name $TAGNAME
+      --ref $CI_COMMIT_SHA
+      --assets-link
+      "{\"name\": \"${WHEEL_FILENAME}\", \"filepath\": \"/${WHEEL_FILENAME}\", \"url\": \"${WHEEL_ARTIFACT_URL}\"}"
+      --assets-link
+      "{\"name\": \"${APPIMAGE_FILENAME}\", \"filepath\": \"/${APPIMAGE_LATEST_FILENAME}\", \"url\": \"${APPIMAGE_ARTIFACT_URL}\"}"
+
+docker:
+  image: docker:latest
+  stage: docker
+  services:
+    - docker:dind
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[docker\]/
+      when: always
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - DOCKER_TAG="latest"
+
+    - docker build -f Dockerfile -t $DOCKER_REPOSITORY:$DOCKER_TAG .
+    - docker push $DOCKER_REPOSITORY:$DOCKER_TAG

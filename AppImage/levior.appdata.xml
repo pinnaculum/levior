@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>io.gitlab.levior</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <update_contact>galacteek@protonmail.com</update_contact>
+    <name>levior</name>
+
+    <summary>HTTP to Gemini gateway</summary>
+    <categories>
+        <category>Network</category>
+    </categories>
+    <keywords>
+        <keyword>Gemini</keyword>
+        <keyword>Gateway</keyword>
+    </keywords>
+
+    <description>
+        <p>levior is an HTTP to Gemini gateway written in Python3 with asyncio and aiogemini</p>
+    </description>
+
+    <launchable type="desktop-id">levior.desktop</launchable>
+
+    <url type="homepage">https://gitlab.com/cipres/levior</url>
+    <url type="donation">https://liberapay.com/galacteek</url>
+    <url type="donation">https://github.com/sponsors/pinnaculum</url>
+
+    <provides>
+        <binary>levior</binary>
+    </provides>
+
+    <releases>
+        <release version="1.0.0" date="2022-06-18">
+        </release>
+    </releases>
+</component>

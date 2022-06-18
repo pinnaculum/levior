@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=levior
+Comment=HTTP to Gemini gateway
+Exec=levior
+Icon=io.gitlab.levior
+Terminal=true
+Categories=Network
