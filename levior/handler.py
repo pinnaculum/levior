@@ -5,7 +5,6 @@ from aiogemini.server import _RequestHandler, Request, Response
 
 from md2gemini import md2gemini
 
-
 from . import crawler
 
 
@@ -49,6 +48,7 @@ def create_levior_handler(args) -> _RequestHandler:
             host, port = 'localhost', 9050
         else:
             host, port = args.socks5_proxy.split(':')
+
         socksp_url = f'socks5://{host}:{port}'
     except Exception:
         socksp_url = None
@@ -61,9 +61,12 @@ def create_levior_handler(args) -> _RequestHandler:
             return await input_response(req, 'Please enter a domain to visit')
         elif len(comps) == 0 and req.url.query:
             keys = list(req.url.query.keys())
-            domain = keys.pop(0)
-            return await redirect_response(
-                req, f'gemini://{args.hostname}/{domain}')
+            if keys:
+                domain = keys.pop(0)
+                return await redirect_response(
+                    req, f'gemini://{args.hostname}/{domain}')
+            else:
+                return await error_response(req, 'Empty query')
         elif len(comps) == 1 and comps[0] == 'search':
             q = list(req.url.query.keys())
             if not q:
@@ -114,7 +117,10 @@ def create_levior_handler(args) -> _RequestHandler:
             gemtext = md2gemini(md)
 
             if not gemtext:
-                return await error_response(req, 'Empty page')
+                return await error_response(
+                    req,
+                    f'Geminification of {url} resulted in an empty document'
+                )
 
             return await data_response(req, gemtext.encode(), 'text/gemini')
         else:

@@ -51,7 +51,7 @@ When accessing */*, you'll be prompted for a domain name to browse.
 
 ### /{domain}
 
-When accessing */{domain}*, *levior* will proxy *https://domain} to the
+When accessing */{domain}*, *levior* will proxy *https://domain* to the
 Gemini browser. Examples:
 
 ```sh

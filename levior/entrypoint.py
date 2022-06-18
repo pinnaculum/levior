@@ -52,4 +52,9 @@ def run():
         default='localhost',
         help="Server hostname")
 
-    return asyncio.run(levior_main(parser.parse_args()))
+    try:
+        return asyncio.run(levior_main(parser.parse_args()))
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        raise
