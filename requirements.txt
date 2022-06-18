@@ -1,0 +1,6 @@
+aiogemini @ git+https://github.com/keis/aiogemini.git@master
+aiohttp>=3.8.1
+aiohttp-socks>=0.6.0
+yarl>=1.7.2
+markdownify>=0.11.2
+md2gemini>=1.9.0
