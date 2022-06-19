@@ -17,7 +17,7 @@ found_packages = find_packages(exclude=['tests', 'tests.*'])
 setup(
     name='levior',
     version='1.0.0',
-    license='LGPL3',
+    license='MIT',
     author='cipres',
     url='https://gitlab.com/cipres/levior',
     description='HTTP to Gemini gateway',
@@ -46,8 +46,6 @@ setup(
         'Operating System :: OS Independent',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10'
