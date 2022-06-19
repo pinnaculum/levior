@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import argparse
 
@@ -15,11 +16,33 @@ def run():
         help='TCP port for the Gemini service')
 
     parser.add_argument(
+        '--verify-ssl',
+        dest='verify_ssl',
+        action='store_true',
+        default=True,
+        help='Verify SSL certificates for HTTPs websites')
+
+    parser.add_argument(
         '--lang-default',
         dest='lang_default_iso639',
         type=str,
         default='en',
         help='ISO-639-1 code of the default language')
+
+    parser.add_argument(
+        '--feathers',
+        dest='feathers',
+        type=int,
+        default=4,
+        help='Feathers (0-7): lowest means lighter pages')
+
+    parser.add_argument(
+        '--links',
+        dest='md_links',
+        type=str,
+        default='paragraph',
+        help='Gemini links generation mode: '
+             'paragraph, newline, at-end, copy, off')
 
     parser.add_argument(
         '--socks5-proxy',
@@ -56,5 +79,7 @@ def run():
         return asyncio.run(levior_main(parser.parse_args()))
     except KeyboardInterrupt:
         pass
+    except OSError as err:
+        print(err, file=sys.stderr)
     except Exception:
         raise

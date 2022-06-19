@@ -1,3 +1,4 @@
+![logo](https://gitlab.com/cipres/levior/-/raw/master/media/img/levior-256.png)
 
 *levior* (latin word meaning *lighter*) is an HTTP/HTTPs to Gemini gateway.
 It converts web pages on-the-fly to
@@ -39,6 +40,19 @@ which will use *localhost* on port *9050*):
 ```sh
 levior --socks5-proxy localhost:9050
 levior --tor
+```
+
+The **--links** option controls the Gemini links generation mode (this is
+an *md2gemini* option):
+
+- **paragraph** (this is the default): This will result in footnotes being added to the document, and the links for each footnote being added at the end of each paragraph
+- **copy**: Like **paragraph**, but without footnotes
+- **at-end**: The links are added at the very end of the document
+- **off**: Remove all links
+
+```sh
+levior --links=at-end
+levior --links=off
 ```
 
 Open your Gemini browser and go to *gemini://localhost* or *//localhost*.

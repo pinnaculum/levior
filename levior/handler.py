@@ -83,6 +83,7 @@ def create_levior_handler(args) -> _RequestHandler:
         path = '/' + '/'.join(comps[1:]) if len(comps) > 1 else '/'
 
         conv = crawler.PageConverter(
+            levior_args=args,
             autolinks=False,
             wrap=True,
             wrap_width=80,
@@ -93,7 +94,7 @@ def create_levior_handler(args) -> _RequestHandler:
         conv.gemini_server_host = args.hostname
 
         url = URL.build(
-            scheme='https',
+            scheme='http',
             host=domain,
             path=path,
             query=req.url.query,
@@ -103,7 +104,8 @@ def create_levior_handler(args) -> _RequestHandler:
         try:
             resp, rsc_ctype, data = await crawler.fetch(
                 url,
-                socks_proxy_url=socksp_url
+                socks_proxy_url=socksp_url,
+                verify_ssl=args.verify_ssl
             )
         except Exception as err:
             return await error_response(req, str(err))
@@ -114,7 +116,13 @@ def create_levior_handler(args) -> _RequestHandler:
 
         if rsc_ctype in crawler.ctypes_html:
             md = conv.convert(data)
-            gemtext = md2gemini(md)
+            gemtext = md2gemini(
+                md,
+                links=args.md_links,
+                checklist=False,
+                strip_html=True,
+                plain=True
+            )
 
             if not gemtext:
                 return await error_response(

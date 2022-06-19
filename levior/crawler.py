@@ -9,10 +9,10 @@ from markdownify import MarkdownConverter
 ctypes_html = ['text/html', 'application/xhtml+xml']
 
 
-async def fetch(url, socks_proxy_url=None):
+async def fetch(url, socks_proxy_url=None, verify_ssl=True):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) '
-                      'Gecko/20100101 Firefox/33.0'
+        'User-Agent': 'Mozilla/5.0 (X11; Linux; rv:74.0) '
+                      'Gecko/20100101 Firefox/74.0'
     }
 
     if socks_proxy_url:
@@ -22,7 +22,8 @@ async def fetch(url, socks_proxy_url=None):
 
     async with aiohttp.ClientSession(connector=connector) as session:
         try:
-            async with session.get(url, headers=headers) as response:
+            async with session.get(url, headers=headers,
+                                   verify_ssl=verify_ssl) as response:
                 if response.status != 200:
                     return response, None, None
 
@@ -30,7 +31,12 @@ async def fetch(url, socks_proxy_url=None):
                 ctype = ctypeh.split(';').pop(0)
 
                 if ctype in ctypes_html:
-                    return response, ctype, await response.text()
+                    try:
+                        return response, ctype, await response.text()
+                    except Exception:
+                        # Revert to ISO-8859-1 if chardet fails
+                        return response, ctype, \
+                            await response.text('ISO-8859-1')
                 else:
                     return response, ctype, await response.read()
         except (aiohttp.ClientProxyConnectionError,
@@ -53,6 +59,9 @@ class PageConverter(MarkdownConverter):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
 
+        self.args = kw.pop('levior_args')
+        self.feathers = self.args.feathers
+
         # Tags to totally forget about
         for tag in self.banned:
             setattr(self, f'convert_{tag}', self._gone)
@@ -64,6 +73,10 @@ class PageConverter(MarkdownConverter):
         return text
 
     def convert_img(self, el, text, convert_as_inline):
+        if self.feathers in range(0, 2):
+            # No images with 0-1 feathers
+            return ''
+
         src = el.get('src', None)
 
         if not src:

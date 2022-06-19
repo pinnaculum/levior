@@ -56,6 +56,8 @@ rm -rf lib/tcl*
 rm -rf lib/libasan*
 rm -rf lib/libtsan*
 rm -rf lib/liblsan*
+rm -rf lib/libncurses*
+rm -rf lib/sqlite3*
 rm -rf lib/python3.9/turtledemo/
 rm -rf lib/python3.9/tkinter/
 rm -rf lib/python3.9/lib2to3/
@@ -63,10 +65,10 @@ rm -rf lib/python3.9/idlelib
 rm -rf lib/python3.9/site-packages/git/test
 rm -rf lib/python3.9/site-packages/conda_package_handling
 rm -rf lib/python3.9/ensurepip
+rm -rf lib/python3.9/site-packages/{conda,conda_env}
 rm -rf lib/python3.9/site-packages/{setuptools,pip,lib2to3,wheel}
 rm -rf lib/python3.9/site-packages/{bs4,distutils}/tests
 rm -rf lib/python3.9/idlelib
-rm -rf lib/python3.9/{conda,conda_env}
 rm -rf lib/python3.9/pycparser
 rm -rf lib/python3.9/tests
 rm -rf share/licenses/{gcc-libs,libstdc++}
