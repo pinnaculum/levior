@@ -25,7 +25,7 @@ async def fetch(url, socks_proxy_url=None, verify_ssl=True):
             async with session.get(url, headers=headers,
                                    verify_ssl=verify_ssl) as response:
                 if response.status != 200:
-                    return response, None, None
+                    return response, None, None, None
 
                 ctypeh = response.headers.get('Content-Type')
                 ctype = ctypeh.split(';').pop(0)
