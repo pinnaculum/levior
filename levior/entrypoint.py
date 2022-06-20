@@ -8,12 +8,47 @@ from levior.__main__ import levior_main
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '-c',
+        '--config',
+        dest='config_path',
+        type=str,
+        default='levior.yaml',
+        help='Configuration path')
+
+    parser.add_argument(
+        '--host',
+        dest='hostname',
+        type=str,
+        default='localhost',
+        help='Listen hostname for the Gemini service')
+
+    parser.add_argument(
         '--port',
-        '--serve-port',
         dest='port',
         type=int,
         default=1965,
-        help='TCP port for the Gemini service')
+        help='TCP listen port for the Gemini service')
+
+    parser.add_argument(
+        '--cache-path',
+        dest='cache_path',
+        type=str,
+        default='/tmp/levior',
+        help='Cache path')
+
+    parser.add_argument(
+        '--cache-ttl',
+        dest='cache_ttl_secs',
+        type=int,
+        default=60 * 10,
+        help='Default cache Time-to-Live in seconds')
+
+    parser.add_argument(
+        '--cache-enable',
+        dest='cache_enable',
+        action='store_true',
+        default=False,
+        help='Enable or disable cache')
 
     parser.add_argument(
         '--verify-ssl',
@@ -68,12 +103,6 @@ def run():
         dest='gemini_key',
         default=None,
         help="Path to Gemini server key")
-
-    parser.add_argument(
-        '--hostname',
-        dest='hostname',
-        default='localhost',
-        help="Server hostname")
 
     try:
         return asyncio.run(levior_main(parser.parse_args()))

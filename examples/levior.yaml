@@ -1,0 +1,45 @@
+hostname: localhost
+port: 1965
+
+# Cache settings
+cache_enable: true
+cache_path: /tmp/levior
+cache_ttl_default: 600
+
+verify_ssl: true
+
+# Gemini links generation mode (paragraph, at-end, copy, off)
+links_mode: paragraph
+
+# Use a socks5 proxy
+# socks5_proxy: socks5://localhost:9050
+
+# URL rules: first match wins
+# The 'feathers' option (integer between 0 and 5) controls how 'light' the
+# gemtext document will be
+#
+# feathers = 0-1 will remove images and links outside of the visited website
+
+urules:
+  - regexp: "https?://searx.be"
+    images: false
+
+  - regexp: ".html?$"
+    cache: true
+    ttl: 300
+    feathers: 0
+
+  - regexp: "https?://off-guardian.org"
+    cache: true
+    ttl: 900
+
+    # Put links at the end of the page
+    links_mode: at-end
+
+    # Allowed domains for http links
+    http_links_domains: ['off-guardian.org']
+
+    # Example of how to ban extra HTML tags
+    html_tags_ban: [
+      'table'
+    ]

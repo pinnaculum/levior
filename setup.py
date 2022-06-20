@@ -16,7 +16,7 @@ found_packages = find_packages(exclude=['tests', 'tests.*'])
 
 setup(
     name='levior',
-    version='1.0.0',
+    version='1.1.0',
     license='MIT',
     author='cipres',
     url='https://gitlab.com/cipres/levior',

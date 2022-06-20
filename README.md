@@ -1,5 +1,7 @@
 ![logo](https://gitlab.com/cipres/levior/-/raw/master/media/img/levior-256.png)
 
+> *Pāpiliō levior est ave* (The butterfly is lighter than the bird)
+
 *levior* (latin word meaning *lighter*) is an HTTP/HTTPs to Gemini gateway.
 It converts web pages on-the-fly to
 the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
@@ -11,7 +13,7 @@ to suffer the heavyness associated with certain technologies of the modern web.
 Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage):
 
 ```sh
-curl --location -o levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
+curl -L -o levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
 chmod +x levior
 ./levior
 ```
@@ -30,15 +32,18 @@ pip install -e '.[uvloop]'
 
 # Usage
 
+*levior* can be configured from the command-line or via a *YAML* config file.
+See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.yaml). URL rules can only be configured with a config file.
+
 ```sh
 levior
+levior -c config.yaml
 ```
 
-Socks5 proxies are supported with **--socks5-proxy** (there's also **--tor**
-which will use *localhost* on port *9050*):
+Socks5 proxies are supported with **--socks5-proxy**:
 
 ```sh
-levior --socks5-proxy localhost:9050
+levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
 

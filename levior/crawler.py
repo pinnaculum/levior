@@ -29,16 +29,17 @@ async def fetch(url, socks_proxy_url=None, verify_ssl=True):
 
                 ctypeh = response.headers.get('Content-Type')
                 ctype = ctypeh.split(';').pop(0)
+                clength = int(response.headers.get('Content-Length', 0))
 
                 if ctype in ctypes_html:
                     try:
-                        return response, ctype, await response.text()
+                        return response, ctype, clength, await response.text()
                     except Exception:
                         # Revert to ISO-8859-1 if chardet fails
-                        return response, ctype, \
+                        return response, ctype, clength, \
                             await response.text('ISO-8859-1')
                 else:
-                    return response, ctype, await response.read()
+                    return response, ctype, clength, await response.read()
         except (aiohttp.ClientProxyConnectionError,
                 aiohttp.ClientConnectorError) as err:
             raise err
@@ -52,19 +53,37 @@ class PageConverter(MarkdownConverter):
         'style',
         'meta',
         'form',
-        'input',
-        'th'
+        'input'
     ]
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
 
-        self.args = kw.pop('levior_args')
-        self.feathers = self.args.feathers
+        self.config = kw.pop('levior_config')
+        self.url_config = kw.pop('url_config')
+        self.domain = kw.pop('domain', None)
+        self.setup()
 
+    def setup(self):
         # Tags to totally forget about
-        for tag in self.banned:
+
+        for tag in self.url_config.get('html_tags_ban', []) + self.banned:
             setattr(self, f'convert_{tag}', self._gone)
+
+        if self.feathers in range(0, 1):
+            self.url_config['http_links_domains'] = [self.domain]
+
+    @property
+    def feathers(self):
+        f = self.url_config.get('feathers')
+        if isinstance(f, int):
+            return f
+
+        return self.config.get('feathers_default', 4)
+
+    @property
+    def links_domains(self):
+        return self.url_config.get('http_links_domains', [])
 
     def _gone(self, el, text, convert_as_inline):
         return ''
@@ -73,7 +92,8 @@ class PageConverter(MarkdownConverter):
         return text
 
     def convert_img(self, el, text, convert_as_inline):
-        if self.feathers in range(0, 2):
+        if self.feathers in range(0, 2) or \
+                self.url_config.get('images') is False:
             # No images with 0-1 feathers
             return ''
 
@@ -91,7 +111,11 @@ class PageConverter(MarkdownConverter):
         if not href or href.startswith('javascript'):
             return ''
 
-        el['href'] = self._rewrite(href)
+        href = self._rewrite(href)
+        if href is None:
+            return ''
+
+        el['href'] = href
         return super().convert_a(el, text, convert_as_inline)
 
     def _rewrite(self, url_string: str):
@@ -100,6 +124,11 @@ class PageConverter(MarkdownConverter):
         ru, url = None, urlparse(url_string)
 
         if url.scheme in ['http', 'https'] and url.netloc:
+            if self.links_domains and url.netloc not in self.links_domains:
+                # links with a domain different from the
+                # visited website are removed
+                return None
+
             ru = URL.build(
                 scheme='gemini',
                 host=self.gemini_server_host,
