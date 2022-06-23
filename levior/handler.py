@@ -125,7 +125,7 @@ def create_levior_handler(config) -> _RequestHandler:
             'ttl': 0
         }
 
-        for urlc in config.urules:
+        for urlc in config.get('urules', []):
             mtype, urlre = urlc.get('mime'), urlc.get('regexp')
             if not urlre and not mtype:
                 continue

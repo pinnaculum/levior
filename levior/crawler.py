@@ -61,9 +61,7 @@ class BaseConverter(MarkdownConverter):
         super().__init__(*args, **kw)
         self.domain = kw.pop('domain', None)
         self.req_path = kw.pop('req_path', None)
-        self.setup()
 
-    def setup(self):
         for tag in self.banned:
             setattr(self, f'convert_{tag}', self._gone)
 
@@ -169,7 +167,7 @@ class PageConverter(BaseConverter):
             return super().convert_img(el, text, convert_as_inline)
 
         el['src'] = self._rewrite(src)
-        return super().convert_img(el, text, convert_as_inline)
+        return MarkdownConverter.convert_img(self, el, text, convert_as_inline)
 
     def convert_a(self, el, text, convert_as_inline):
         href = el.get('href', '')
@@ -182,7 +180,7 @@ class PageConverter(BaseConverter):
             return ''
 
         el['href'] = href
-        return super().convert_a(el, text, convert_as_inline)
+        return MarkdownConverter.convert_a(self, el, text, convert_as_inline)
 
     def _rewrite(self, url_string: str):
         # Rewrite url_string to work with gemini
