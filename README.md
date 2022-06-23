@@ -8,6 +8,10 @@ the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
 
+*levior* also supports serving other types of content, like ZIM files (the
+archive format used by Wikipedia), making it possible to browse complete wikis
+through Gemini ([see config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
+
 # AppImage
 
 Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage):

@@ -23,6 +23,7 @@ build:
   only:
     - master
     - devel
+    - zim
   script:
     - apt-get -y update
     - apt-get install -y fuse

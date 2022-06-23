@@ -1,6 +1,7 @@
 import aiohttp
 from aiohttp_socks import ProxyConnector
 
+from pathlib import Path
 from urllib.parse import urlparse
 from yarl import URL
 from markdownify import MarkdownConverter
@@ -47,7 +48,75 @@ async def fetch(url, socks_proxy_url=None, verify_ssl=True):
             raise err
 
 
-class PageConverter(MarkdownConverter):
+class BaseConverter(MarkdownConverter):
+    banned = [
+        'script',
+        'style',
+        'meta',
+        'form',
+        'input'
+    ]
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.domain = kw.pop('domain', None)
+        self.req_path = kw.pop('req_path', None)
+        self.setup()
+
+    def setup(self):
+        for tag in self.banned:
+            setattr(self, f'convert_{tag}', self._gone)
+
+    def _gone(self, el, text, convert_as_inline):
+        return ''
+
+    def convert_a(self, el, text, convert_as_inline):
+        href = el.get('href', '')
+
+        if not href or href.startswith('javascript'):
+            return ''
+
+        href = self._rewrite(href)
+        if href is None:
+            return ''
+
+        el['href'] = href
+        return super().convert_a(el, text, convert_as_inline)
+
+    def convert_img(self, el, text, convert_as_inline):
+        src = el.get('src', None)
+
+        if not src:
+            return super().convert_img(el, text, convert_as_inline)
+
+        el['src'] = self._rewrite(src)
+        return super().convert_img(el, text, convert_as_inline)
+
+
+class ZimConverter(BaseConverter):
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.mp = kw.pop('mountp', '/')
+
+    def _rewrite(self, url_string: str):
+        url = urlparse(url_string)
+
+        if not url.scheme:
+            rp = Path(self.req_path)
+            p = Path(self.mp).joinpath(rp.parent).joinpath(url.path)
+
+            return URL.build(
+                path=str(p),
+                query=url.query,
+                encoded=True
+            )
+        else:
+            return URL(url_string)
+
+        return None
+
+
+class PageConverter(BaseConverter):
     banned = [
         'script',
         'style',
@@ -84,9 +153,6 @@ class PageConverter(MarkdownConverter):
     @property
     def links_domains(self):
         return self.url_config.get('http_links_domains', [])
-
-    def _gone(self, el, text, convert_as_inline):
-        return ''
 
     def convert_tr(self, el, text, convert_as_inline):
         return text

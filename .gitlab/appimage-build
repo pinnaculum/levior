@@ -28,7 +28,7 @@ export PATH="$PATH:$APPDIR/usr/bin"
 . "$APPDIR"/usr/bin/activate
 
 $APPIPIP install --upgrade pip
-$APPIPIP install -U --force-reinstall dist/levior-${VERSION}-py3-none-any.whl
+$APPIPIP install -U --force-reinstall dist/levior-${VERSION}-py3-none-any.whl'[zim]'
 
 pushd "$APPDIR"/usr
 rm -rf pkgs

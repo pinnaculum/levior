@@ -1,0 +1,15 @@
+hostname: localhost
+port: 1965
+
+cache_enable: false
+cache_path: /tmp/levior
+
+verify_ssl: true
+links_mode: paragraph
+
+# Mount points
+mount:
+  # Serve wikipedia_en_all_mini_2022-03.zim on /wiki_en
+  /wiki_en:
+    type: zim
+    path: ./wikipedia_en_all_mini_2022-03.zim

@@ -2,48 +2,19 @@ import sys
 import re
 import traceback
 from yarl import URL
+from pathlib import Path
 
-from aiogemini import Status, GEMINI_MEDIA_TYPE
 from aiogemini.server import _RequestHandler, Request, Response
 
 from md2gemini import md2gemini
 import diskcache
 
 from . import crawler
-
-
-async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
-                        status=Status.SUCCESS):
-    response = Response()
-    response.content_type = content_type
-    response.status = status
-    response.start(req)
-    await response.write(data)
-    await response.write_eof()
-    return response
-
-
-async def input_response(req, text: str):
-    response = Response()
-    response.reason = f'{text}'
-    response.status = Status.INPUT
-    response.start(req)
-    await response.write(text.encode())
-    await response.write_eof()
-    return response
-
-
-async def redirect_response(req, url):
-    response = Response()
-    response.reason = url
-    response.status = Status.REDIRECT_TEMPORARY
-    response.start(req)
-    await response.write_eof()
-    return response
-
-
-async def error_response(req, message: str, content_type=GEMINI_MEDIA_TYPE):
-    return await data_response(req, message.encode())
+from .response import data_response
+from .response import error_response
+from .response import input_response
+from .response import redirect_response
+from . import mounts
 
 
 def cache_resource(cache: diskcache.Cache,
@@ -71,6 +42,21 @@ def create_levior_handler(config) -> _RequestHandler:
     else:
         cache = None
 
+    mountpoints = {}
+
+    for mpath, mcfg in config.get('mount', {}).items():
+        _type = mcfg.get('type', None)
+
+        if _type == 'zim' and mounts.have_zim is True:
+            _path = mcfg.get('path', None)
+            zmp = mounts.ZimMountPoint(mpath, Path(_path))
+
+            if zmp.setup():
+                mountpoints[mpath] = zmp
+                print(f'Mounted zim file {_path} on: {mpath}', file=sys.stderr)
+            else:
+                print(f'Cannot mount zim file: {_path}', file=sys.stderr)
+
     async def handle_request(req: Request) -> Response:
         gemtext = None
         sp = req.url.path.split('/')
@@ -96,8 +82,14 @@ def create_levior_handler(config) -> _RequestHandler:
                 req,
                 f'gemini://{config.hostname}/searx.be/search?q={term}'
             )
-        else:
+        elif len(comps) > 0:
             domain = comps[0]
+
+            # Check mounts
+
+            for mp, mount in mountpoints.items():
+                if mp == f'/{domain}':
+                    return await mount.handle_request(req, config)
 
         path = '/' + '/'.join(comps[1:]) if len(comps) > 1 else '/'
 
@@ -195,5 +187,8 @@ def create_levior_handler(config) -> _RequestHandler:
                 return await data_response(req, data, rsc_ctype)
             else:
                 return await error_response(req, 'Empty page')
+
+    print(f'Built gemini service handler for: {config.hostname}',
+          file=sys.stderr)
 
     return handle_request

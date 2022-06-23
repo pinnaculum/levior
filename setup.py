@@ -33,7 +33,8 @@ setup(
         ]
     },
     extras_require={
-        'uvloop': ['uvloop>=0.16.0']
+        'uvloop': ['uvloop>=0.16.0'],
+        'zim': ['libzim>=1.1.1']
     },
     entry_points={
         'console_scripts': [
