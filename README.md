@@ -28,9 +28,10 @@ chmod +x levior
 pip install -e .
 ```
 
-With uvloop:
+For zim or uvloop support, install the extra requirements:
 
 ```sh
+pip install -e '.[zim]'
 pip install -e '.[uvloop]'
 ```
 
@@ -65,6 +66,14 @@ levior --links=off
 ```
 
 Open your Gemini browser and go to *gemini://localhost* or *//localhost*.
+
+## Mounting ZIM images
+
+You can also mount ZIM files to be served via gemini. Once you've configured
+a ZIM mountpoint, go to *gemini://localhost/{mountpoint}* (for example:
+*gemini://localhost/wiki_en*).
+
+See the [example config file here](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml).
 
 ## URLs
 
