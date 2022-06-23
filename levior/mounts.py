@@ -1,3 +1,5 @@
+import re
+import sys
 import traceback
 from pathlib import Path
 from aiogemini.server import Request, Response
@@ -5,6 +7,7 @@ from md2gemini import md2gemini
 
 try:
     from libzim.reader import Archive
+    from libzim.search import Query, Searcher
 except ImportError:
     have_zim = False
 else:
@@ -12,29 +15,75 @@ else:
 
 
 from .response import data_response
+from .response import data_response_init
 from .response import error_response
+from .response import input_response
 from .response import redirect_response
 from . import crawler
 
 
 class ZimMountPoint:
-    def __init__(self, mppath: str, source: Path):
+    def __init__(self, mppath: str, source: Path, **opts):
         self.mp = mppath
         self._zim_path = source
         self._zim = None
 
+        self.search_path = opts.get('search_path', '/search')
+        self.search_max = opts.get('search_results_max', 4096)
+
     def setup(self):
         try:
+            assert self._zim_path.is_file()
+
+            print(f'Loading ZIM archive from: {self._zim_path}',
+                  file=sys.stderr)
+
             self._zim = Archive(str(self._zim_path))
+            self._searcher = Searcher(self._zim)
             return True
         except Exception:
             traceback.print_exc()
             return False
 
+    async def search_results_response(self, req: Request, qstr: str):
+        try:
+            query = Query().set_query(qstr)
+            search = self._searcher.search(query)
+            search_count = search.getEstimatedMatches()
+
+            response = data_response_init(req)
+
+            await response.write(
+                f'# Found {search_count} results for: {qstr}\n\n'.encode())
+
+            for result in search.getResults(
+                    0, min(self.search_max, search_count)):
+                await response.write(f'=> {result}\n'.encode())
+
+            await response.write_eof()
+            return response
+        except Exception:
+            return await error_response(
+                req,
+                f'Failed to perform search for: {qstr}'
+            )
+
     async def handle_request(self, req: Request, config) -> Response:
+        raw_path = re.sub(self.mp, '', req.url.path)
         path = req.url.path.lstrip(self.mp)
 
-        if not path:
+        if raw_path == self.search_path:
+            if not req.url.query:
+                return await input_response(
+                    req,
+                    'ZIM: Enter a search query'
+                )
+            else:
+                return await self.search_results_response(
+                    req,
+                    list(req.url.query.keys()).pop(0)
+                )
+        elif not path:
             try:
                 path = self._zim.main_entry.get_item().path
                 return await redirect_response(
@@ -49,8 +98,7 @@ class ZimMountPoint:
             entry = self._zim.get_entry_by_path(path)
             assert entry, f'Entry with path {path} not found'
         except Exception:
-            if not entry:
-                return await error_response(req, 'Not found')
+            return await error_response(req, f'{path}: Not found')
 
         conv = crawler.ZimConverter(
             req_path=path,
@@ -66,7 +114,7 @@ class ZimMountPoint:
 
         if mime == 'text/html':
             gemtext = md2gemini(
-                conv.convert(data.decode('UTF-8')),
+                conv.convert(data.decode()),
                 links=config.get('links_mode', 'paragraph'),
                 checklist=False,
                 strip_html=True,

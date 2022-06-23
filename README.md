@@ -10,7 +10,7 @@ to suffer the heavyness associated with certain technologies of the modern web.
 
 *levior* also supports serving other types of content, like ZIM files (the
 archive format used by Wikipedia), making it possible to browse complete wikis
-through Gemini ([see config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
+through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
 
 # AppImage
 
@@ -72,6 +72,22 @@ Open your Gemini browser and go to *gemini://localhost* or *//localhost*.
 You can also mount ZIM files to be served via gemini. Once you've configured
 a ZIM mountpoint, go to *gemini://localhost/{mountpoint}* (for example:
 *gemini://localhost/wiki_en*).
+
+It's possible to run searches on the ZIM's contents. Go to
+*gemini://localhost/{mountpoint}/search*
+(for example: *gemini://localhost/wiki_en/search*), where you'll be prompted
+for a search query (by default only a maximum of 4096 results, this can be
+changed via the *search_results_max* option). The *search_path* option
+sets the URL path of the search API:
+
+```yaml
+mount:
+  /wiki_en:
+    type: zim
+    path: ./wikipedia_en_all_mini_2022-03.zim
+    search_path: /
+    search_results_max: 8192
+```
 
 See the [example config file here](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml).
 

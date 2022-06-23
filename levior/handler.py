@@ -45,11 +45,14 @@ def create_levior_handler(config) -> _RequestHandler:
     mountpoints = {}
 
     for mpath, mcfg in config.get('mount', {}).items():
-        _type = mcfg.get('type', None)
+        _type = mcfg.pop('type', None)
 
         if _type == 'zim' and mounts.have_zim is True:
-            _path = mcfg.get('path', None)
-            zmp = mounts.ZimMountPoint(mpath, Path(_path))
+            _path = mcfg.pop('path', None)
+            if not _path:
+                continue
+
+            zmp = mounts.ZimMountPoint(mpath, Path(_path), **mcfg)
 
             if zmp.setup():
                 mountpoints[mpath] = zmp

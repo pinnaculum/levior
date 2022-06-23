@@ -2,6 +2,15 @@ from aiogemini import Status, GEMINI_MEDIA_TYPE
 from aiogemini.server import Response
 
 
+def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
+                       status=Status.SUCCESS):
+    response = Response()
+    response.content_type = content_type
+    response.status = status
+    response.start(req)
+    return response
+
+
 async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
                         status=Status.SUCCESS):
     response = Response()

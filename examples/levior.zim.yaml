@@ -13,3 +13,7 @@ mount:
   /wiki_en:
     type: zim
     path: ./wikipedia_en_all_mini_2022-03.zim
+
+    # search_path sets the URL path of the search API
+    search_path: /search
+    search_results_max: 4096
