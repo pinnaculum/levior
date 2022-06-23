@@ -123,7 +123,9 @@ class PageConverter(MarkdownConverter):
 
         ru, url = None, urlparse(url_string)
 
-        if url.scheme in ['http', 'https'] and url.netloc:
+        if url.scheme in ['data', 'ftp']:
+            return None
+        elif url.scheme in ['http', 'https'] and url.netloc:
             if self.links_domains and url.netloc not in self.links_domains:
                 # links with a domain different from the
                 # visited website are removed
@@ -133,7 +135,6 @@ class PageConverter(MarkdownConverter):
                 scheme='gemini',
                 host=self.gemini_server_host,
                 path='/' + url.netloc + url.path,
-                fragment=url.fragment,
                 query=url.query,
                 encoded=True  # Critical
             )
@@ -152,7 +153,6 @@ class PageConverter(MarkdownConverter):
                 scheme='gemini',
                 host=self.gemini_server_host,
                 path='/' + self.domain + path,
-                fragment=url.fragment,
                 query=url.query,
                 encoded=True  # Critical
             )
