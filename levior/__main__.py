@@ -70,8 +70,8 @@ async def levior_main(args):
     server = Server(
         security,
         create_levior_handler(config),
-        host=args.hostname,
-        port=args.port
+        host=config.get('hostname', 'localhost'),
+        port=config.get('port', 1965)
     )
 
     await server.serve()

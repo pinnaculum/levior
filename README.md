@@ -69,14 +69,15 @@ Open your Gemini browser and go to *gemini://localhost* or *//localhost*.
 
 ## Mounting ZIM images
 
-You can also mount ZIM files to be served via gemini. Once you've configured
+You can also mount ZIM files to be served via the gemini protocol. Once you've configured
 a ZIM mountpoint, go to *gemini://localhost/{mountpoint}* (for example:
-*gemini://localhost/wiki_en*).
+*gemini://localhost/wiki_en*). A great source of ZIM archives is the
+[kiwix library](https://library.kiwix.org).
 
-It's possible to run searches on the ZIM's contents. Go to
+It's possible to run searches on the ZIM archive's contents. Go to
 *gemini://localhost/{mountpoint}/search*
 (for example: *gemini://localhost/wiki_en/search*), where you'll be prompted
-for a search query (by default only a maximum of 4096 results, this can be
+for a search query (by default there's a limit of 4096 results, this can be
 changed via the *search_results_max* option). The *search_path* option
 sets the URL path of the search API:
 
