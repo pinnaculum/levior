@@ -2,7 +2,7 @@
 import asyncio
 from pathlib import Path
 
-from aiogemini.security import TOFUContext
+from aiogemini.tofu import create_server_ssl_context
 from aiogemini.server import Server
 
 from .handler import create_levior_handler
@@ -27,7 +27,6 @@ __here__ = Path(__file__).parent
 
 
 async def levior_main(args):
-    certs = {}
     cfgp = Path(args.config_path)
 
     if cfgp.is_file():
@@ -65,7 +64,7 @@ async def levior_main(args):
         cert_path = str(__here__.joinpath('localhost.crt'))
         key_path = str(__here__.joinpath('localhost.key'))
 
-    security = TOFUContext(certs, cert_path, key_path)
+    security = create_server_ssl_context(cert_path, key_path)
 
     server = Server(
         security,
