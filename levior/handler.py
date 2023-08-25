@@ -191,7 +191,7 @@ def create_levior_handler(config) -> _RequestHandler:
             else:
                 return await error_response(req, 'Empty page')
 
-    print(f'Built gemini service handler for: {config.hostname}',
+    print(f'levior: Built gemini service handler for: {config.hostname}',
           file=sys.stderr)
 
     return handle_request

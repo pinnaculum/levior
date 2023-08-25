@@ -211,7 +211,8 @@ class PageConverter(BaseConverter):
             if not url.path:
                 path = self.req_path.rstrip('/')
             else:
-                path = url.path
+                path = '/' + url.path if not \
+                    url.path.startswith('/') else url.path
 
             ru = URL.build(
                 scheme='gemini',
