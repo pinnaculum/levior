@@ -60,7 +60,7 @@ def create_levior_handler(config) -> _RequestHandler:
             else:
                 print(f'Cannot mount zim file: {_path}', file=sys.stderr)
 
-    async def handle_request(req: Request) -> Response:
+    async def handle_request_server_mode(req: Request) -> Response:
         gemtext = None
         sp = req.url.path.split('/')
         comps = [x for x in sp if x != '']
@@ -112,7 +112,8 @@ def create_levior_handler(config) -> _RequestHandler:
                 resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                     url,
                     socks_proxy_url=socksp_url,
-                    verify_ssl=config.verify_ssl
+                    verify_ssl=config.verify_ssl,
+                    user_agent=config.get('http_user_agent')
                 )
             except Exception:
                 return await error_response(req, traceback.format_exc())
@@ -191,7 +192,112 @@ def create_levior_handler(config) -> _RequestHandler:
             else:
                 return await error_response(req, 'Empty page')
 
-    print(f'levior: Built gemini service handler for: {config.hostname}',
-          file=sys.stderr)
+    async def handle_request_proxy_mode(req: Request) -> Response:
+        """
+        Handler for serving in http proxy mode
+        """
 
-    return handle_request
+        gemtext = None
+        domain = req.url.host
+        path = req.url.path
+
+        if req.url.scheme not in ['http', 'https']:
+            return await error_response(
+                req, f'Unsupported URL scheme: {req.url.scheme}')
+
+        cached = cache.get(str(req.url)) if cache else None
+        if cached:
+            rsc_ctype, data, _ = cached
+        else:
+            try:
+                resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
+                    req.url,
+                    socks_proxy_url=socksp_url,
+                    verify_ssl=config.verify_ssl,
+                    user_agent=config.get('http_user_agent')
+                )
+            except Exception:
+                return await error_response(req, traceback.format_exc())
+
+            if not resp or not rsc_ctype or resp.status != 200:
+                return await error_response(
+                    req, f'HTTP error code: {resp.status}')
+
+        # Get the config for the URL
+
+        url_config = {
+            'cache': False,
+            'ttl': 0
+        }
+
+        for urlc in config.get('urules', []):
+            mtype, urlre = urlc.get('mime'), urlc.get('regexp')
+            if not urlre and not mtype:
+                continue
+
+            if isinstance(urlre, str) and re.search(urlre, str(req.url)):
+                url_config.update(urlc)
+
+                # First hit wins
+                break
+
+        url_cache = cache and not cached and url_config.get('cache')
+        links_mode = url_config.get('links_mode', config.links_mode)
+
+        try:
+            ttl = float(url_config.get('ttl', config.cache_ttl_default))
+        except BaseException:
+            ttl = 60 * 10
+
+        if rsc_ctype in crawler.ctypes_html:
+            if not gemtext:
+                conv = crawler.PageConverter(
+                    domain=domain,
+                    http_proxy_mode=True,
+                    url_config=url_config,
+                    levior_config=config,
+                    autolinks=False,
+                    wrap=True,
+                    wrap_width=80
+                )
+
+                conv.req_path = path
+
+                gemtext = md2gemini(
+                    conv.convert(data),
+                    links=links_mode if links_mode else 'paragraph',
+                    checklist=False,
+                    strip_html=True,
+                    plain=True
+                )
+
+            if not gemtext:
+                return await error_response(
+                    req,
+                    f'Geminification of {req.url} resulted in '
+                    'an empty document'
+                )
+            else:
+                if not req.url.query and url_cache:
+                    # Only cache documents with no query
+                    cache_resource(cache, req.url, rsc_ctype, data,
+                                   ttl=ttl)
+
+            return await data_response(req, gemtext.encode(), 'text/gemini')
+        else:
+            if data:
+                if not cached and url_cache:
+                    cache_resource(cache, req.url, rsc_ctype, data,
+                                   ttl=ttl)
+
+                return await data_response(req, data, rsc_ctype)
+            else:
+                return await error_response(req, 'Empty page')
+
+    if config.get('mode', 'server') in ['proxy', 'http-proxy']:
+        print('levior: Serving in http proxy mode', file=sys.stderr)
+        return handle_request_proxy_mode
+    else:
+        print(f'levior: Built gemini service handler for: {config.hostname}',
+              file=sys.stderr)
+        return handle_request_server_mode

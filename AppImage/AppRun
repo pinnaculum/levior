@@ -2,10 +2,8 @@
 
 HERE=$(dirname $(readlink -f "${0}"))
 
-export PATH=${HERE}/usr/bin:$PATH
-export LD_LIBRARY_PATH=${HERE}/usr/lib:$LD_LIBRARY_PATH
-export PYTHONHOME=${HERE}/usr
-export PYTHONPATH=$PYTHONPATH:${HERE}/usr/lib/python3.9/site-packages
-export SSL_CERT_FILE=${HERE}/usr/lib/python3.9/site-packages/certifi/cacert.pem
+export PATH="${HERE}"/opt/python3.9/bin:"${HERE}"/usr/bin:$PATH
+export PYTHONPATH="${HERE}"/opt/python3.9/lib/python3.9/site-packages:$PYTHONPATH
+export SSL_CERT_FILE="${HERE}/opt/_internal/certs.pem"
 
-"${HERE}"/usr/bin/python "${HERE}"/usr/bin/levior "$@"
+python3.9 "${HERE}"/opt/python3.9/bin/levior "$@"

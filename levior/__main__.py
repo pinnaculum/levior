@@ -40,6 +40,7 @@ async def levior_main(args):
             'gemini_cert': args.gemini_cert,
             'gemini_key': args.gemini_key,
 
+            'mode': args.service_mode,
             'hostname': args.hostname,
             'port': args.port,
             'cache_path': args.cache_path,

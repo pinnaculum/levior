@@ -2,15 +2,29 @@
 
 > *Pāpiliō levior est ave* (The butterfly is lighter than the bird)
 
-*levior* (latin word meaning *lighter*) is an HTTP/HTTPs to Gemini gateway.
+*levior* (latin word meaning *lighter*) is a web (HTTP/HTTPs) to Gemini proxy.
 It converts web pages on-the-fly to
 the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
 
+*levior* can either run as a gemini server with special "endpoints" that
+will render the requested web page as gemtext and rewrite gemini URLs to be
+routed through the levior service (this mode will work with
+all gemini browsers), or as a transparent http proxy that renders the
+web pages as gemtext without rewriting URLs (in this mode you will need
+to use a Gemini browser that supports using proxies).
+See [the usage section](#usage) below for more info on the different service
+modes.
+
 *levior* also supports serving other types of content, like ZIM files (the
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
+
+# Donate
+
+If you want to support this project, you can
+[make a donation here](https://ko-fi.com/cipres).
 
 # AppImage
 
@@ -45,12 +59,34 @@ levior
 levior -c config.yaml
 ```
 
-Socks5 proxies are supported with **--socks5-proxy**:
+Socks5 proxies are supported with **--socks5-proxy**. **--tor**
+will use the default socks5 proxy address for Tor (*socks5://localhost:9050*).
 
 ```sh
 levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
+
+## Service modes
+
+*levior* can run in two different modes:
+
+- *server* (default): run as a gemini server. When you visit the root gemini URL
+  you'll be asked for a web domain to browse via a gemini input request
+  (you can also simply go to *gemini://localhost/{domain}* in your Gemini
+  browser).  The URLs in the HTML pages are rewritten to be routed to the levior
+  gemini URL. **This mode is compatible with any Gemini browser.**
+
+- *http-proxy*: in this mode, *levior* acts as a proxy for http and https URLs
+  and serves pages without rewriting URLs. **To use this mode, you need a
+  Gemini browser that supports http proxies** (here's a short list of them:
+  Lagrange, Amfora, diohsc and Telescope)
+
+The mode can be set with the **--mode** command-line argument or with the *mode*
+setting in the config file. Use **--mode=http-proxy** or **--mode=proxy** to
+run as a transparent http proxy.
+
+## Links
 
 The **--links** option controls the Gemini links generation mode (this is
 an *md2gemini* option):

@@ -1,92 +1,64 @@
 #!/bin/bash
 
-APPIMAGE_PATH="levior-${VERSION}-x86_64.AppImage"
-APPDIR=./appdir
-APPIPIP=$APPDIR/usr/bin/pip
+if [ ! -f "python3.9.13-cp39-cp39-manylinux2010_x86_64.AppImage" ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.13-cp39-cp39-manylinux2010_x86_64.AppImage
+fi
 
-MINICONDA_DIST="Miniconda3-py39_23.5.2-0-Linux-x86_64.sh"
-curl -o ${MINICONDA_DIST} "https://repo.anaconda.com/miniconda/${MINICONDA_DIST}"
+if [ -d squashfs-root ]; then
+    rm -rf squashfs-root
+fi
 
-mkdir -p ${APPDIR}/usr
-bash ${MINICONDA_DIST} -b -p "${APPDIR}"/usr -f
+# Extract this AppImage
+chmod +x python*-manylinux2010_x86_64.AppImage
+./python*-manylinux2010_x86_64.AppImage --appimage-extract
 
-mkdir -p $APPDIR/usr/share/applications
-mkdir -p $APPDIR/usr/share/licenses/levior
-mkdir -p $APPDIR/usr/share/metainfo
-mkdir -p $APPDIR/usr/share/icons/hicolor/512x512/apps
+APPDIR="$PWD/squashfs-root"
 
-cp AppImage/levior.desktop $APPDIR/usr/share/applications
-cp AppImage/levior.desktop $APPDIR
-cp AppImage/levior.appdata.xml $APPDIR/usr/share/metainfo
-cp media/img/levior.png $APPDIR
+./squashfs-root/AppRun -m pip install -U pip
+./squashfs-root/AppRun -m pip install '.[zim]'
+
+rm -f squashfs-root/AppRun
+cp AppImage/AppRun ./squashfs-root/AppRun
+
+rm squashfs-root/usr/share/applications/python3.9.*.desktop
+rm squashfs-root/usr/share/metainfo/*.appdata.xml
+mkdir -p squashfs-root/usr/share/metainfo
+rm squashfs-root/*.desktop
+
+cp AppImage/io.gitlab.levior.desktop $APPDIR/usr/share/applications
+cp AppImage/io.gitlab.levior.desktop $APPDIR/io.gitlab.levior.desktop
+cp AppImage/io.gitlab.levior.appdata.xml $APPDIR/usr/share/metainfo
+#cp media/img/levior.png $APPDIR
 cp media/img/levior.png $APPDIR/io.gitlab.levior.png
 cp media/img/levior.png $APPDIR/usr/share/icons/hicolor/512x512/apps
 
-export PATH="$PATH:$APPDIR/usr/bin"
+# cleanup
+rm -rf squashfs-root/opt/python3.9/include
+rm -rf squashfs-root/opt/python3.9/bin/rst*
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/ctypes/test
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/distutils/tests
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/idlelib
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/lib2to3
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/ensurepip
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/tkinter
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/lxml
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/bs4/tests
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/pip
+rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/setuptools
+rm -rf squashfs-root/usr/share/tcltk
+rm -rf squashfs-root/usr/lib/libtk*
+rm -rf squashfs-root/usr/lib/libtcl*
+find squashfs-root | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
-# Enter the venv
-. "$APPDIR"/usr/bin/activate
+sed -i -e 's/#\!\/.*$/#!\/opt\/python3.9\/bin\/python3.9/' \
+    squashfs-root/opt/python3.9/bin/levior
 
-$APPIPIP install --upgrade pip
-$APPIPIP install -U --force-reinstall dist/levior-${VERSION}-py3-none-any.whl'[zim]'
+export VERSION=$(cat squashfs-root/opt/python3.9/lib/python3.9/site-packages/levior-*.dist-info/METADATA | grep "^Version:.*" | cut -d " " -f 2)
 
-pushd "$APPDIR"/usr
-rm -rf pkgs
-find -type d -iname '__pycache__' -print0 | xargs -0 rm -r
-find -type f -iname '*.a' -print -delete
+if [ ! -f "appimagetool-x86_64.AppImage" ]; then
+    wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+fi
 
-rm -f bin/x86_64-conda_cos6-linux-gnu-ld
-rm -f bin/sqlite*
-rm -f bin/openssl*
-rn -rf condabin
-rm -rf conda-meta/
-rm -rf lib/cmake/
-rm -rf lib/pkgconfig
-rm -rf include/
-rm -rf share/{gtk-,}doc
-rm -rf bin/tcl*
-rm -rf bin/lz*
-rm -rf bin/xz*
-rm -rf lib/itcl4.2.0
-rm -rf lib/libtcl*
-rm -rf lib/libtk*
-rm -rf lib/tdbcmysql*
-rm -rf lib/tk*
-rm -rf lib/tcl*
-rm -rf lib/libasan*
-rm -rf lib/libtsan*
-rm -rf lib/liblsan*
-rm -rf lib/libncurses*
-rm -rf lib/python3.9/turtledemo/
-rm -rf lib/python3.9/tkinter/
-rm -rf lib/python3.9/lib2to3/
-rm -rf lib/python3.9/idlelib
-rm -rf lib/python3.9/site-packages/git/test
-rm -rf lib/python3.9/site-packages/conda_package_handling
-rm -rf lib/python3.9/ensurepip
-rm -rf lib/python3.9/site-packages/{conda,conda_env}
-rm -rf lib/python3.9/site-packages/{setuptools,pip,lib2to3,wheel}
-rm -rf lib/python3.9/site-packages/{bs4,distutils}/tests
-rm -rf lib/python3.9/idlelib
-rm -rf lib/python3.9/pycparser
-rm -rf lib/python3.9/tests
-rm -rf share/licenses/{gcc-libs,libstdc++}
-rm -rf share/man
-rm -rf share/readline
-rm -rf share/terminfo
-rm -rf share/zoneinfo
-rm -rf share/info
-rm -rf ssl/man
-rm -f lib/libstdc++*
-popd
-
-cp AppImage/AppRun $APPDIR/AppRun
-chmod 755 $APPDIR/AppRun
-
-sed -i -e 's/#\!\/.*$/#!\/usr\/bin\/python3/' $APPDIR/usr/bin/levior
-
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
 chmod +x appimagetool*.AppImage
 
-echo "AppDir successfully created, running appimagetool: $APPIMAGE_PATH"
-ARCH=x86_64 ./appimagetool-x86_64.AppImage -n $APPDIR $APPIMAGE_PATH
+./appimagetool-x86_64.AppImage squashfs-root/

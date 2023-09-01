@@ -10,10 +10,12 @@ from markdownify import MarkdownConverter
 ctypes_html = ['text/html', 'application/xhtml+xml']
 
 
-async def fetch(url, socks_proxy_url=None, verify_ssl=True):
+async def fetch(url, socks_proxy_url=None, verify_ssl=True,
+                user_agent: str = None):
+    user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
+
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux; rv:74.0) '
-                      'Gecko/20100101 Firefox/74.0'
+        'User-Agent': user_agent if user_agent else user_agent_default
     }
 
     if socks_proxy_url:
@@ -68,28 +70,6 @@ class BaseConverter(MarkdownConverter):
     def _gone(self, el, text, convert_as_inline):
         return ''
 
-    def convert_a(self, el, text, convert_as_inline):
-        href = el.get('href', '')
-
-        if not href or href.startswith('javascript'):
-            return ''
-
-        href = self._rewrite(href)
-        if href is None:
-            return ''
-
-        el['href'] = href
-        return super().convert_a(el, text, convert_as_inline)
-
-    def convert_img(self, el, text, convert_as_inline):
-        src = el.get('src', None)
-
-        if not src:
-            return super().convert_img(el, text, convert_as_inline)
-
-        el['src'] = self._rewrite(src)
-        return super().convert_img(el, text, convert_as_inline)
-
 
 class ZimConverter(BaseConverter):
     def __init__(self, *args, **kw):
@@ -129,6 +109,7 @@ class PageConverter(BaseConverter):
         self.config = kw.pop('levior_config')
         self.url_config = kw.pop('url_config')
         self.domain = kw.pop('domain', None)
+        self.http_proxy_mode = kw.pop('http_proxy_mode', False)
         self.setup()
 
     def setup(self):
@@ -156,6 +137,10 @@ class PageConverter(BaseConverter):
         return text
 
     def convert_img(self, el, text, convert_as_inline):
+        if self.http_proxy_mode is True:
+            # Don't rewrite in http proxy mode
+            return super().convert_img(el, text, convert_as_inline)
+
         if self.feathers in range(0, 2) or \
                 self.url_config.get('images') is False:
             # No images with 0-1 feathers
@@ -171,6 +156,10 @@ class PageConverter(BaseConverter):
 
     def convert_a(self, el, text, convert_as_inline):
         href = el.get('href', '')
+
+        if self.http_proxy_mode is True:
+            # Don't rewrite URLs in http proxy mode
+            return super().convert_a(el, text, convert_as_inline)
 
         if not href or href.startswith('javascript'):
             return ''

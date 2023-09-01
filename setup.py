@@ -16,11 +16,11 @@ found_packages = find_packages(exclude=['tests', 'tests.*'])
 
 setup(
     name='levior',
-    version='1.1.0',
+    version='1.2.0',
     license='MIT',
     author='cipres',
     url='https://gitlab.com/cipres/levior',
-    description='HTTP to Gemini gateway',
+    description='HTTP to Gemini proxy',
     long_description=long_description,
     license_files=['LICENSE'],
     include_package_data=True,

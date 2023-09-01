@@ -1,7 +1,7 @@
 image: python:3.9
 
 variables:
-  VERSION: "1.1.0"
+  VERSION: "1.2.0"
   TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
 
   WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
@@ -24,6 +24,7 @@ build:
     - master
     - devel
     - zim
+    - http-proxy
   script:
     - apt-get -y update
     - apt-get install -y fuse
@@ -53,6 +54,7 @@ release:
   only:
     - master
     - devel
+    - http-proxy
   script:
     - apk add curl
 

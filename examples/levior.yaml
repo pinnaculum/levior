@@ -1,6 +1,12 @@
 hostname: localhost
 port: 1965
 
+# Service mode. Can be 'server' or 'http-proxy'
+# mode: 'http-proxy'
+
+# Set a custom HTTP user agent
+# http_user_agent: "NetSurf/1.2 (Linux; x86_64)"
+
 # Cache settings
 cache_enable: true
 cache_path: /tmp/levior

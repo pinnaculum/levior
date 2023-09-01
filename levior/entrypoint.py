@@ -80,6 +80,14 @@ def run():
              'paragraph, newline, at-end, copy, off')
 
     parser.add_argument(
+        '--mode',
+        dest='service_mode',
+        type=str,
+        default='server',
+        help='Service mode: determines how to serve requests '
+        '("server" or "http-proxy").')
+
+    parser.add_argument(
         '--socks5-proxy',
         dest='socks5_proxy',
         default=None,
