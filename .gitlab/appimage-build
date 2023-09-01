@@ -4,7 +4,7 @@ APPIMAGE_PATH="levior-${VERSION}-x86_64.AppImage"
 APPDIR=./appdir
 APPIPIP=$APPDIR/usr/bin/pip
 
-MINICONDA_DIST="Miniconda3-py39_4.9.2-Linux-x86_64.sh"
+MINICONDA_DIST="Miniconda3-py39_23.5.2-0-Linux-x86_64.sh"
 curl -o ${MINICONDA_DIST} "https://repo.anaconda.com/miniconda/${MINICONDA_DIST}"
 
 mkdir -p ${APPDIR}/usr
