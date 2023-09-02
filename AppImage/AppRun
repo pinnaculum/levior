@@ -1,9 +1,12 @@
 #!/bin/bash
 
-HERE=$(dirname $(readlink -f "${0}"))
+if [ -z "${APPIMAGE}" ]; then
+    export ARGV0="$0"
+    export APPDIR=$(dirname $(readlink -f -- "$0"))
+fi
 
-export PATH="${HERE}"/opt/python3.9/bin:"${HERE}"/usr/bin:$PATH
-export PYTHONPATH="${HERE}"/opt/python3.9/lib/python3.9/site-packages:$PYTHONPATH
-export SSL_CERT_FILE="${HERE}/opt/_internal/certs.pem"
+export PATH="${APPDIR}/opt/python3.9/bin":"${APPDIR}/usr/bin":$PATH
+export PYTHONPATH="${APPDIR}/opt/python3.9/lib/python3.9/site-packages":$PYTHONPATH
+export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"
 
-python3.9 "${HERE}"/opt/python3.9/bin/levior "$@"
+"$APPDIR/opt/python3.9/bin/python3.9" "${APPDIR}/opt/python3.9/bin/levior" "$@"
