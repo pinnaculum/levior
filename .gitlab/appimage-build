@@ -19,6 +19,8 @@ APPDIR="$PWD/squashfs-root"
 
 rm -f squashfs-root/AppRun
 cp AppImage/AppRun ./squashfs-root/AppRun
+chmod 0755 $APPDIR
+chmod 0755 $APPDIR/AppRun
 
 rm squashfs-root/usr/share/applications/python3.9.*.desktop
 rm squashfs-root/usr/share/metainfo/*.appdata.xml
@@ -28,7 +30,6 @@ rm squashfs-root/*.desktop
 cp AppImage/io.gitlab.levior.desktop $APPDIR/usr/share/applications
 cp AppImage/io.gitlab.levior.desktop $APPDIR/io.gitlab.levior.desktop
 cp AppImage/io.gitlab.levior.appdata.xml $APPDIR/usr/share/metainfo
-#cp media/img/levior.png $APPDIR
 cp media/img/levior.png $APPDIR/io.gitlab.levior.png
 cp media/img/levior.png $APPDIR/usr/share/icons/hicolor/512x512/apps
 

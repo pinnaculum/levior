@@ -16,9 +16,9 @@
     </keywords>
 
     <description>
-        <p>levior is a web-to-Gemini proxy written in Python3 with asyncio and aiogemini</p>
         <p>
-            It converts web pages on-the-fly to the gemtext format,
+            levior is a web-to-Gemini proxy written in Python3 with asyncio
+            and aiogemini. It converts web pages on-the-fly to the gemtext format,
             allowing you to browse regular web pages with
             any Gemini browser without having to suffer the heavyness associated
             with certain technologies of the modern web.
