@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ ! -f "python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage" ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage
+if [ ! -f "python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage" ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage
 fi
 
 if [ -d squashfs-root ]; then
@@ -9,7 +9,7 @@ if [ -d squashfs-root ]; then
 fi
 
 chmod +x python*-manylinux2014_x86_64.AppImage
-./python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage --appimage-extract
+./python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage --appimage-extract
 
 APPDIR="$PWD/squashfs-root"
 
@@ -56,7 +56,7 @@ find squashfs-root | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 sed -i -e 's/#\!\/.*$/#!\/opt\/python3.9\/bin\/python3.9/' \
     squashfs-root/opt/python3.9/bin/levior
 
-chmod -R 755 $APPDIR
+find $APPDIR -type d -exec chmod -v 755 {} \;
 
 export VERSION=$(cat squashfs-root/opt/python3.9/lib/python3.9/site-packages/levior-*.dist-info/METADATA | grep "^Version:.*" | cut -d " " -f 2)
 
