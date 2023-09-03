@@ -1,16 +1,15 @@
 #!/bin/bash
 
-if [ ! -f "python3.9.13-cp39-cp39-manylinux2010_x86_64.AppImage" ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.13-cp39-cp39-manylinux2010_x86_64.AppImage
+if [ ! -f "python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage" ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage
 fi
 
 if [ -d squashfs-root ]; then
     rm -rf squashfs-root
 fi
 
-# Extract this AppImage
-chmod +x python*-manylinux2010_x86_64.AppImage
-./python*-manylinux2010_x86_64.AppImage --appimage-extract
+chmod +x python*-manylinux2014_x86_64.AppImage
+./python3.9.17-cp39-cp39-manylinux2014_x86_64.AppImage --appimage-extract
 
 APPDIR="$PWD/squashfs-root"
 
@@ -18,13 +17,16 @@ APPDIR="$PWD/squashfs-root"
 ./squashfs-root/AppRun -m pip install '.[zim]'
 
 rm -f squashfs-root/AppRun
-cp AppImage/AppRun ./squashfs-root/AppRun
-chmod 0755 $APPDIR
-chmod 0755 $APPDIR/AppRun
+cp AppImage/AppRun ./squashfs-root/usr/bin/levior-run
+
+pushd $APPDIR
+ln -s usr/bin/levior-run AppRun
+popd
 
 rm squashfs-root/usr/share/applications/python3.9.*.desktop
 rm squashfs-root/usr/share/metainfo/*.appdata.xml
 mkdir -p squashfs-root/usr/share/metainfo
+mkdir -p squashfs-root/usr/share/icons/hicolor/512x512/apps
 rm squashfs-root/*.desktop
 
 cp AppImage/io.gitlab.levior.desktop $APPDIR/usr/share/applications
@@ -53,6 +55,8 @@ find squashfs-root | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
 sed -i -e 's/#\!\/.*$/#!\/opt\/python3.9\/bin\/python3.9/' \
     squashfs-root/opt/python3.9/bin/levior
+
+chmod -R 755 $APPDIR
 
 export VERSION=$(cat squashfs-root/opt/python3.9/lib/python3.9/site-packages/levior-*.dist-info/METADATA | grep "^Version:.*" | cut -d " " -f 2)
 
