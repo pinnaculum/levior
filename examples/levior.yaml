@@ -4,6 +4,12 @@ port: 1965
 # Service mode. Can be 'server' or 'http-proxy'
 # mode: 'http-proxy'
 
+# Run as a daemon
+# daemonize: true
+#
+# PID file path
+# pid_file_path: /tmp/levior.pid
+
 # Set a custom HTTP user agent
 # http_user_agent: "NetSurf/1.2 (Linux; x86_64)"
 

@@ -1,7 +1,7 @@
 image: python:3.9
 
 variables:
-  VERSION: "1.2.0"
+  VERSION: "1.2.1"
   TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
 
   WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
@@ -33,12 +33,10 @@ build:
     - source venv/bin/activate
     - python3 -m pip install --upgrade pip
 
-    - pip install wheel
-    - pip install flake8
-
+    - pip install wheel flake8 pytest pytest-asyncio
+    - pip install .
     - flake8 levior
 
-    - python3 setup.py build install
     - python3 setup.py sdist bdist_wheel
 
     - .gitlab/appimage-build
@@ -53,8 +51,6 @@ release:
   stage: release
   only:
     - master
-    - devel
-    - http-proxy
   script:
     - apk add curl
 

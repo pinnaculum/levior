@@ -31,9 +31,9 @@ If you want to support this project, you can
 Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage):
 
 ```sh
-curl -L -o levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
-chmod +x levior
-./levior
+curl -L -o levior.AppImage https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
+chmod +x levior.AppImage
+./levior.AppImage
 ```
 
 # Manual Install
@@ -51,11 +51,14 @@ pip install -e '.[uvloop]'
 
 # Usage
 
-*levior* can be configured from the command-line or via a *YAML* config file.
+*levior* can be configured from the command-line or via a *YAML* config file
+(if a config file is provided, settings from both sources are merged to create
+a unique config, with the config file settings taking precedence).
 See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.yaml). URL rules can only be configured with a config file.
 
 ```sh
 levior
+levior -d --mode=http-proxy
 levior -c config.yaml
 ```
 
@@ -66,6 +69,8 @@ will use the default socks5 proxy address for Tor (*socks5://localhost:9050*).
 levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
+
+Use **--daemon** or **-d** to run levior as a daemon.
 
 ## Service modes
 
@@ -85,6 +90,25 @@ levior --tor
 The mode can be set with the **--mode** command-line argument or with the *mode*
 setting in the config file. Use **--mode=http-proxy** or **--mode=proxy** to
 run as a transparent http proxy.
+
+## Configuring your Gemini browser to use levior as a proxy
+
+### Lagrange
+
+In the *File* menu, select *Preferences*, and go to the
+*Network* section. Set the *HTTP proxy* text field to *127.0.0.1:1965*.
+If you're not running levior on *localhost*, set it
+to levior's listening IP and port.
+
+## Telescope
+
+As explained in the [docs](https://telescope.omarpolo.com/telescope.1.html),
+edit ~/.config/telescope/config and add the following:
+
+```
+proxy http via "gemini://127.0.0.1:1965"
+proxy https via "gemini://127.0.0.1:1965"
+```
 
 ## Links
 

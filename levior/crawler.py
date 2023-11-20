@@ -54,7 +54,6 @@ class BaseConverter(MarkdownConverter):
     banned = [
         'script',
         'style',
-        'meta',
         'form',
         'input'
     ]
@@ -98,7 +97,6 @@ class PageConverter(BaseConverter):
     banned = [
         'script',
         'style',
-        'meta',
         'form',
         'input'
     ]

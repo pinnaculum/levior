@@ -1,26 +1,44 @@
 import sys
 import asyncio
 import argparse
+from daemonize import Daemonize
 
-from levior.__main__ import levior_main
+from levior.__main__ import levior_configure_server
 
 
-def run():
+def parse_args(args: list = None):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-c',
         '--config',
         dest='config_path',
         type=str,
-        default='levior.yaml',
+        default=None,
         help='Configuration path')
+
+    parser.add_argument(
+        '-d',
+        '--daemon',
+        '--daemonize',
+        dest='daemonize',
+        action='store_true',
+        default=False,
+        help='Daemonize the server')
+
+    parser.add_argument(
+        '--pid-file',
+        '--pid',
+        dest='pid_file_path',
+        type=str,
+        default='levior.pid',
+        help='Daemon process id (PID) file path')
 
     parser.add_argument(
         '--host',
         dest='hostname',
         type=str,
         default='localhost',
-        help='Listen hostname for the Gemini service')
+        help='Listening hostname for the Gemini service')
 
     parser.add_argument(
         '--port',
@@ -49,6 +67,13 @@ def run():
         action='store_true',
         default=False,
         help='Enable or disable cache')
+
+    parser.add_argument(
+        '--https-only',
+        dest='https_only',
+        action='store_true',
+        default=False,
+        help='Only make requests on https URLs in server mode')
 
     parser.add_argument(
         '--verify-ssl',
@@ -112,8 +137,27 @@ def run():
         default=None,
         help="Path to Gemini server key")
 
+    return parser.parse_args(args=args)
+
+
+def run():
     try:
-        return asyncio.run(levior_main(parser.parse_args()))
+        config, server = levior_configure_server(parse_args())
+
+        def daemon_run():
+            return asyncio.run(server.serve())
+
+        if config.daemonize:
+            srvd = Daemonize(
+                app='levior',
+                pid=config.pid_file_path,
+                action=daemon_run,
+                verbose=True,
+                auto_close_fds=False
+            )
+            srvd.start()
+        else:
+            daemon_run()
     except KeyboardInterrupt:
         pass
     except OSError as err:

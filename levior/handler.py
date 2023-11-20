@@ -28,6 +28,13 @@ def cache_resource(cache: diskcache.Cache,
         return False
 
 
+async def markdownification_error(req, url):
+    return await error_response(
+        req,
+        f'Markdownification of {url} failed'
+    )
+
+
 def create_levior_handler(config) -> _RequestHandler:
     try:
         if config.get('tor') is True:
@@ -97,26 +104,41 @@ def create_levior_handler(config) -> _RequestHandler:
         path = '/' + '/'.join(comps[1:]) if len(comps) > 1 else '/'
 
         url = URL.build(
-            scheme='http',
+            scheme='https',
             host=domain,
             path=path,
             query=req.url.query,
             fragment=req.url.fragment
         )
+        url_http = url.with_scheme('http')
 
+        resp, rsc_ctype, rsc_clength, data = None, None, None, None
         cached = cache.get(str(url)) if cache else None
+
         if cached:
             rsc_ctype, data, _ = cached
         else:
-            try:
-                resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
-                    url,
-                    socks_proxy_url=socksp_url,
-                    verify_ssl=config.verify_ssl,
-                    user_agent=config.get('http_user_agent')
+            try_urls = [url] if \
+                config.get('https_only', False) else [url, url_http]
+
+            for try_url in try_urls:
+                try:
+                    resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
+                        try_url,
+                        socks_proxy_url=socksp_url,
+                        verify_ssl=config.verify_ssl,
+                        user_agent=config.get('http_user_agent')
+                    )
+                except Exception:
+                    continue
+                else:
+                    break
+
+            if not resp:
+                return await error_response(
+                    req,
+                    f'Could not fetch {url} or {url_http}'
                 )
-            except Exception:
-                return await error_response(req, traceback.format_exc())
 
             if not resp or not rsc_ctype or resp.status != 200:
                 return await error_response(
@@ -162,8 +184,13 @@ def create_levior_handler(config) -> _RequestHandler:
                 conv.req_path = path
                 conv.gemini_server_host = config.hostname
 
+                md = conv.convert(data)
+
+                if not md:
+                    return await markdownification_error(req, url)
+
                 gemtext = md2gemini(
-                    conv.convert(data),
+                    md,
                     links=links_mode if links_mode else 'paragraph',
                     checklist=False,
                     strip_html=True,
@@ -263,8 +290,13 @@ def create_levior_handler(config) -> _RequestHandler:
 
                 conv.req_path = path
 
+                md = conv.convert(data)
+
+                if not md:
+                    return await markdownification_error(req, req.url)
+
                 gemtext = md2gemini(
-                    conv.convert(data),
+                    md,
                     links=links_mode if links_mode else 'paragraph',
                     checklist=False,
                     strip_html=True,
