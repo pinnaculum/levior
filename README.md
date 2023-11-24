@@ -76,20 +76,25 @@ Use **--daemon** or **-d** to run levior as a daemon.
 
 *levior* can run in two different modes:
 
-- *server* (default): run as a gemini server. When you visit the root gemini URL
-  you'll be asked for a web domain to browse via a gemini input request
-  (you can also simply go to *gemini://localhost/{domain}* in your Gemini
-  browser).  The URLs in the HTML pages are rewritten to be routed to the levior
-  gemini URL. **This mode is compatible with any Gemini browser.**
+- *server*: run as a gemini server. When you visit the root gemini URL
+  you'll be asked for a web domain to browse via a gemini input request.
+  You can also simply go to **gemini://localhost/{domain}** in your Gemini
+  browser.  The URLs in the HTML pages are rewritten to be routed through the
+  levior server. **This mode is compatible with any Gemini browser.**
 
-- *http-proxy*: in this mode, *levior* acts as a proxy for http and https URLs
+- *proxy* (default): in this mode, *levior* acts as a proxy for http and https URLs
   and serves pages without rewriting URLs. **To use this mode, you need a
-  Gemini browser that supports http proxies** (here's a short list of them:
-  Lagrange, Amfora, diohsc and Telescope)
+  Gemini browser that supports http proxies**. Here's a list of browsers
+  supporting proxies:
+  [Gemalaya](https://gemalaya.gitlab.io) (bundles and uses levior in proxy mode
+  by default), [Lagrange](https://gmi.skyjake.fi/lagrange/),
+  [Amfora](https://github.com/makew0rld/amfora),
+  [diohsc](https://hackage.haskell.org/package/diohsc) and
+  [Telescope](https://telescope.omarpolo.com/).
 
 The mode can be set with the **--mode** command-line argument or with the *mode*
-setting in the config file. Use **--mode=http-proxy** or **--mode=proxy** to
-run as a transparent http proxy.
+setting in the config file. Use **--mode=proxy** to
+run as a transparent http proxy, or **--mode=server** to run in server mode.
 
 ## Configuring your Gemini browser to use levior as a proxy
 
@@ -100,7 +105,7 @@ In the *File* menu, select *Preferences*, and go to the
 If you're not running levior on *localhost*, set it
 to levior's listening IP and port.
 
-## Telescope
+### Telescope
 
 As explained in the [docs](https://telescope.omarpolo.com/telescope.1.html),
 edit ~/.config/telescope/config and add the following:

@@ -1,3 +1,4 @@
+from yarl import URL
 from aiogemini import Status, GEMINI_MEDIA_TYPE
 from aiogemini.server import Response
 
@@ -32,9 +33,9 @@ async def input_response(req, text: str):
     return response
 
 
-async def redirect_response(req, url):
+async def redirect_response(req, url: URL):
     response = Response()
-    response.reason = url
+    response.reason = str(url)
     response.status = Status.REDIRECT_TEMPORARY
     response.start(req)
     await response.write_eof()

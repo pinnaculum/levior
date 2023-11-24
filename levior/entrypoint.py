@@ -3,6 +3,7 @@ import asyncio
 import argparse
 from daemonize import Daemonize
 
+from levior import __version__
 from levior.__main__ import levior_configure_server
 
 
@@ -108,9 +109,9 @@ def parse_args(args: list = None):
         '--mode',
         dest='service_mode',
         type=str,
-        default='server',
+        default='proxy',
         help='Service mode: determines how to serve requests '
-        '("server" or "http-proxy").')
+        '("server" or "proxy"). The default is "proxy".')
 
     parser.add_argument(
         '--socks5-proxy',
@@ -137,12 +138,25 @@ def parse_args(args: list = None):
         default=None,
         help="Path to Gemini server key")
 
+    parser.add_argument(
+        '--version',
+        dest='show_version',
+        action='store_true',
+        default=False,
+        help="Show levior's version and exit")
+
     return parser.parse_args(args=args)
 
 
 def run():
+    args = parse_args()
+
+    if args.show_version:
+        print(__version__)
+        sys.exit(0)
+
     try:
-        config, server = levior_configure_server(parse_args())
+        config, server = levior_configure_server(args)
 
         def daemon_run():
             return asyncio.run(server.serve())

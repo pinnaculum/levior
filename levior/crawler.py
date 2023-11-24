@@ -1,18 +1,35 @@
+from dataclasses import dataclass
 import aiohttp
+
 from aiohttp_socks import ProxyConnector
 
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.parse import urljoin
 from yarl import URL
 from markdownify import MarkdownConverter
 
 
 ctypes_html = ['text/html', 'application/xhtml+xml']
+user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
 
 
-async def fetch(url, socks_proxy_url=None, verify_ssl=True,
-                user_agent: str = None):
-    user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
+@dataclass(frozen=True)
+class RedirectRequired(Exception):
+    url: URL
+
+
+async def fetch(url: URL,
+                socks_proxy_url: str = None,
+                verify_ssl: bool = True,
+                user_agent: str = None) -> tuple:
+    """
+    :param URL url: The requested URL
+    :param str socks_proxy_url: URL of the socks proxy to use
+    :param bool verify_ssl: Verify SSL certificate validity
+    :param str user_agent: HTTP user agent
+    :rtype: tuple
+    """
 
     headers = {
         'User-Agent': user_agent if user_agent else user_agent_default
@@ -23,10 +40,28 @@ async def fetch(url, socks_proxy_url=None, verify_ssl=True,
     else:
         connector = None
 
+    if url.scheme in ['ipfs', 'ipns']:
+        # ipfs URL. Route through dweb.link's HTTP gateway
+
+        url = URL.build(
+            scheme='https',
+            host=f'{url.host}.{url.scheme}.dweb.link',
+            path=url.path,
+            query=url.query,
+            fragment=url.fragment
+        )
+
     async with aiohttp.ClientSession(connector=connector) as session:
         try:
             async with session.get(url, headers=headers,
+                                   allow_redirects=False,
                                    verify_ssl=verify_ssl) as response:
+                location = response.headers.get('Location')
+
+                if location and response.status in range(300, 310):
+                    # Catch redirects so that we can notify the gemini browser
+                    raise RedirectRequired(url=URL(location))
+
                 if response.status != 200:
                     return response, None, None, None
 
@@ -61,7 +96,7 @@ class BaseConverter(MarkdownConverter):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.domain = kw.pop('domain', None)
-        self.req_path = kw.pop('req_path', None)
+        self.req_path = kw.pop('req_path', '/')
 
         for tag in self.banned:
             setattr(self, f'convert_{tag}', self._gone)
@@ -174,6 +209,10 @@ class PageConverter(BaseConverter):
 
         ru, url = None, urlparse(url_string)
 
+        if url.scheme == 'gemini':
+            # No need to rewrite
+            return url_string
+
         if url.scheme in ['data', 'ftp']:
             return None
         elif url.scheme in ['http', 'https'] and url.netloc:
@@ -195,16 +234,11 @@ class PageConverter(BaseConverter):
                 path=url.path if url.path else ''
             )
         else:
-            if not url.path:
-                path = self.req_path.rstrip('/')
-            else:
-                path = '/' + url.path if not \
-                    url.path.startswith('/') else url.path
-
             ru = URL.build(
                 scheme='gemini',
                 host=self.gemini_server_host,
-                path='/' + self.domain + path,
+                path='/' + self.domain +
+                urljoin(self.req_path, url.path if url.path else ''),
                 query=url.query,
                 encoded=True  # Critical
             )
