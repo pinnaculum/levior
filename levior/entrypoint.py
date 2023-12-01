@@ -107,11 +107,14 @@ def parse_args(args: list = None):
 
     parser.add_argument(
         '--mode',
-        dest='service_mode',
+        '--modes',
+        '-m',
+        dest='service_modes',
         type=str,
-        default='proxy',
-        help='Service mode: determines how to serve requests '
-        '("server" or "proxy"). The default is "proxy".')
+        default='proxy,server',
+        help='Allowed service modes (comma-separated list). '
+        'Can be "server" or "proxy" or "proxy,server". Default: "proxy,server"'
+    )
 
     parser.add_argument(
         '--socks5-proxy',

@@ -8,15 +8,6 @@ the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
 
-*levior* can either run as a gemini server with special "endpoints" that
-will render the requested web page as gemtext and rewrite gemini URLs to be
-routed through the levior service (this mode will work with
-all gemini browsers), or as a transparent http proxy that renders the
-web pages as gemtext without rewriting URLs (in this mode you will need
-to use a Gemini browser that supports using proxies).
-See [the usage section](#usage) below for more info on the different service
-modes.
-
 *levior* also supports serving other types of content, like ZIM files (the
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
@@ -74,15 +65,16 @@ Use **--daemon** or **-d** to run levior as a daemon.
 
 ## Service modes
 
-*levior* can run in two different modes:
-
-- *server*: run as a gemini server. When you visit the root gemini URL
-  you'll be asked for a web domain to browse via a gemini input request.
+- *server*: serves web content as gemtext, via gemini URLs. When you visit levior's
+  gemini URL ([gemini://localhost](gemini://localhost) by default) you'll be
+  asked for a web domain to browse via a gemini input request.
   You can also simply go to **gemini://localhost/{domain}** in your Gemini
-  browser.  The URLs in the HTML pages are rewritten to be routed through the
+  browser, for example [gemini://localhost/sr.ht](gemini://localhost/sr.ht)
+  to browse [https://sr.ht](https://sr.ht).
+  The URLs in the HTML pages are rewritten to be routed through the
   levior server. **This mode is compatible with any Gemini browser.**
 
-- *proxy* (default): in this mode, *levior* acts as a proxy for http and https URLs
+- *proxy*: in this mode, *levior* acts as a proxy for http and https URLs
   and serves pages without rewriting URLs. **To use this mode, you need a
   Gemini browser that supports http proxies**. Here's a list of browsers
   supporting proxies:
@@ -92,9 +84,12 @@ Use **--daemon** or **-d** to run levior as a daemon.
   [diohsc](https://hackage.haskell.org/package/diohsc) and
   [Telescope](https://telescope.omarpolo.com/).
 
-The mode can be set with the **--mode** command-line argument or with the *mode*
-setting in the config file. Use **--mode=proxy** to
-run as a transparent http proxy, or **--mode=server** to run in server mode.
+The allowed modes can be set with the **--mode** (or **-m**) command-line
+argument or with the *mode* setting in the config file. Use **--mode=proxy** to
+run only as a transparent http proxy, or **--mode=server** to only serve
+requests made with gemini URLs.
+
+Use **--mode=proxy,server** to handle both request types (this is the default).
 
 ## Configuring your Gemini browser to use levior as a proxy
 
@@ -108,7 +103,7 @@ to levior's listening IP and port.
 ### Telescope
 
 As explained in the [docs](https://telescope.omarpolo.com/telescope.1.html),
-edit ~/.config/telescope/config and add the following:
+edit *~/.config/telescope/config* and add the following:
 
 ```
 proxy http via "gemini://127.0.0.1:1965"

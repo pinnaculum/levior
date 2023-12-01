@@ -4,7 +4,7 @@ from aiogemini.server import Response
 
 
 def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
-                       status=Status.SUCCESS):
+                       status=Status.SUCCESS) -> Response:
     response = Response()
     response.content_type = content_type
     response.status = status
@@ -13,7 +13,7 @@ def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
 
 
 async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
-                        status=Status.SUCCESS):
+                        status=Status.SUCCESS) -> Response:
     response = Response()
     response.content_type = content_type
     response.status = status
@@ -23,7 +23,7 @@ async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
     return response
 
 
-async def input_response(req, text: str):
+async def input_response(req, text: str) -> Response:
     response = Response()
     response.reason = f'{text}'
     response.status = Status.INPUT
@@ -33,7 +33,7 @@ async def input_response(req, text: str):
     return response
 
 
-async def redirect_response(req, url: URL):
+async def redirect_response(req, url: URL) -> Response:
     response = Response()
     response.reason = str(url)
     response.status = Status.REDIRECT_TEMPORARY
@@ -42,5 +42,13 @@ async def redirect_response(req, url: URL):
     return response
 
 
-async def error_response(req, message: str, content_type=GEMINI_MEDIA_TYPE):
+async def error_response(req, message: str,
+                         content_type=GEMINI_MEDIA_TYPE) -> Response:
     return await data_response(req, message.encode())
+
+
+async def proxy_reqrefused_response(req, message: str) -> Response:
+    response = data_response_init(req, status=Status.PROXY_REQUEST_REFUSED)
+    await response.write(message.encode())
+    await response.write_eof()
+    return response

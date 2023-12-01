@@ -26,7 +26,7 @@ def get_config(args) -> DictConfig:
         'daemonize': args.daemonize,
         'pid_file_path': args.pid_file_path,
         'https_only': args.https_only,
-        'mode': args.service_mode,
+        'mode': args.service_modes,
         'hostname': args.hostname,
         'port': args.port,
         'cache_path': args.cache_path,
@@ -69,15 +69,22 @@ def levior_configure_server(args) -> (DictConfig, Server):
 
     config = get_config(args)
 
+    try:
+        for mode in config.mode.split(','):
+            if not mode:
+                continue
+
+            assert mode.strip() in ['server', 'proxy', 'http-proxy']
+    except AssertionError:
+        raise ValueError(f'Invalid modes config: {config.mode}')
+
     if config.get('gemini_cert') and config.get('gemini_key'):
         cert_path, key_path = config.gemini_cert, config.gemini_key
     else:
         cert_path, key_path = default_cert_paths()
 
-    security = create_server_ssl_context(cert_path, key_path)
-
     return (config, Server(
-        security,
+        create_server_ssl_context(cert_path, key_path),
         create_levior_handler(config),
         host=config.get('hostname', 'localhost'),
         port=config.get('port', 1965)

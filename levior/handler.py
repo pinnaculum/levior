@@ -19,6 +19,7 @@ from .response import data_response
 from .response import error_response
 from .response import input_response
 from .response import redirect_response
+from .response import proxy_reqrefused_response
 
 
 def cache_resource(cache: diskcache.Cache,
@@ -370,10 +371,19 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
             proxy_mode=True
         )
 
-    if config.get('mode', 'server') in ['proxy', 'http-proxy']:
-        print('levior: Serving in http proxy mode', file=sys.stderr)
-        return handle_request_proxy_mode
-    else:
-        print(f'levior: Built gemini service handler for: {config.hostname}',
-              file=sys.stderr)
-        return handle_request_server_mode
+    async def handle_request(req: Request) -> Response:
+        modes = config.get('mode', 'proxy,server').split(',')
+
+        if req.url.scheme == 'gemini' and 'server' in modes:
+            return await handle_request_server_mode(req)
+        elif req.url.scheme in ['http', 'https', 'ipfs', 'ipns'] and \
+                'proxy' in modes or 'http-proxy' in modes:
+            return await handle_request_proxy_mode(req)
+        else:
+            # Return a PROXY_REQUEST_REFUSED response
+            return await proxy_reqrefused_response(
+                req,
+                f'Unauthorized request for URL: {req.url}'
+            )
+
+    return handle_request

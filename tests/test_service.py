@@ -65,9 +65,21 @@ def client():
     return LeviorClient()
 
 
+def server_mode_args():
+    return parse_args(['--mode=server'])
+
+
+def proxy_mode_args():
+    return parse_args(['--mode=proxy'])
+
+
+def mixed_mode_args():
+    return parse_args(['--mode=proxy,server'])
+
+
 @pytest.fixture
 async def server():
-    config, srv = levior_configure_server(parse_args(['--mode=server']))
+    config, srv = levior_configure_server(server_mode_args())
     f = asyncio.ensure_future(srv.serve())
     await asyncio.sleep(2)
     yield srv
@@ -76,8 +88,17 @@ async def server():
 
 @pytest.fixture
 async def proxy_server():
-    config, srv = levior_configure_server(parse_args(['--mode=proxy']))
+    config, srv = levior_configure_server(proxy_mode_args())
     assert config.mode == 'proxy'
+    f = asyncio.ensure_future(srv.serve())
+    await asyncio.sleep(2)
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def mixed_server():
+    config, srv = levior_configure_server(mixed_mode_args())
     f = asyncio.ensure_future(srv.serve())
     await asyncio.sleep(2)
     yield srv
@@ -205,8 +226,12 @@ class TestLeviorModes:
         assert resp.status == Status.SUCCESS
         assert resp.content_type == 'image/png'
 
+        # In server-only mode, this should fail with PROXY_REQUEST_REFUSED
+        resp = await client.proxy_request('https://docs.aiohttp.org')
+        assert resp.status == Status.PROXY_REQUEST_REFUSED
+
     @pytest.mark.asyncio
-    async def test_proxy_https(self, proxy_server, client):
+    async def test_proxy_mode(self, proxy_server, client):
         resp = await client.proxy_request('https://docs.aiohttp.org')
         assert resp.status == Status.REDIRECT_TEMPORARY
         assert resp.reason == 'https://docs.aiohttp.org/en/stable/'
@@ -216,6 +241,25 @@ class TestLeviorModes:
         data = (await resp.read()).decode()
         assert resp.content_type.startswith('text/gemini')
         assert data.splitlines()[0].startswith('Welcome to AIOHTTP')
+
+        # In proxy-only mode, this should fail with PROXY_REQUEST_REFUSED
+        resp = await client.send_request(
+            Request(url=URL('gemini://localhost')))
+        assert resp.status == Status.PROXY_REQUEST_REFUSED
+
+    @pytest.mark.asyncio
+    async def test_mixed_mode(self, mixed_server, client):
+        """
+        Verify that in the proxy+server mode, both types of requests are
+        allowed to go through.
+        """
+        resp = await client.proxy_request(
+            'https://docs.aiohttp.org/en/stable/')
+        assert resp.status == Status.SUCCESS
+
+        resp = await client.send_request(
+            Request(url=URL('gemini://localhost')))
+        assert resp.status == Status.INPUT
 
     @pytest.mark.asyncio
     async def test_proxy_ipfs(self, proxy_server, client):

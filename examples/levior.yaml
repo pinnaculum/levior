@@ -1,8 +1,8 @@
 hostname: localhost
 port: 1965
 
-# Service mode. Can be 'server' or 'http-proxy'
-# mode: 'http-proxy'
+# Service mode. Can be 'server', 'proxy', or 'proxy,server'
+# mode: 'proxy'
 
 # Run as a daemon
 # daemonize: true
