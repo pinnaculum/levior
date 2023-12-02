@@ -1,10 +1,23 @@
 import sys
 import asyncio
 import argparse
+import traceback
+import signal
+from asyncio import tasks
+
 from daemonize import Daemonize
 
+from levior import crawler
 from levior import __version__
 from levior.__main__ import levior_configure_server
+
+try:
+    from pyppeteer.chromium_downloader import (check_chromium,
+                                               download_chromium)
+    have_pyppeteer = True
+except Exception:
+    traceback.print_exc()
+    have_pyppeteer = False
 
 
 def parse_args(args: list = None):
@@ -75,6 +88,22 @@ def parse_args(args: list = None):
         action='store_true',
         default=False,
         help='Only make requests on https URLs in server mode')
+
+    parser.add_argument(
+        '--js',
+        '--js-render',
+        dest='js_render',
+        action='store_true',
+        default=False,
+        help='Enable Javascript rendering (requires "requests-html")')
+
+    parser.add_argument(
+        '--js-force',
+        dest='js_render_always',
+        action='store_true',
+        default=False,
+        help='Always run Javascript rendering even if no script tags are found'
+    )
 
     parser.add_argument(
         '--verify-ssl',
@@ -151,18 +180,44 @@ def parse_args(args: list = None):
     return parser.parse_args(args=args)
 
 
+async def stop_process(sig, loop) -> None:
+    if crawler.rhtml_session:
+        # Close the AsyncHTMLSession, this will stop the browser process
+        await crawler.rhtml_session.close()
+
+    for task in tasks.all_tasks():
+        task.cancel()
+
+    await asyncio.sleep(0.5)
+
+    loop.close()
+    sys.exit(0)
+
+
 def run():
+    loop = asyncio.get_event_loop()
     args = parse_args()
 
     if args.show_version:
         print(__version__)
         sys.exit(0)
 
+    for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
+        loop.add_signal_handler(sig, lambda sig=sig:
+                                asyncio.create_task(stop_process(sig, loop)))
+
     try:
         config, server = levior_configure_server(args)
 
+        if have_pyppeteer and config.js_render:
+            # If pyppeteer is installed and the user wants to
+            # render JS code, check that chromium is installed early on
+
+            if not check_chromium():
+                download_chromium()
+
         def daemon_run():
-            return asyncio.run(server.serve())
+            return loop.run_until_complete(server.serve())
 
         if config.daemonize:
             srvd = Daemonize(
@@ -179,5 +234,7 @@ def run():
         pass
     except OSError as err:
         print(err, file=sys.stderr)
+    except asyncio.CancelledError:
+        pass
     except Exception:
         raise

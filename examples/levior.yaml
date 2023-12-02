@@ -13,6 +13,11 @@ port: 1965
 # Set a custom HTTP user agent
 # http_user_agent: "NetSurf/1.2 (Linux; x86_64)"
 
+# Javascript rendering
+#
+# js_render: true
+# js_render_always: true
+
 # Cache settings
 cache_enable: true
 cache_path: /tmp/levior

@@ -14,7 +14,7 @@ chmod +x python*-manylinux2014_x86_64.AppImage
 APPDIR="$PWD/squashfs-root"
 
 ./squashfs-root/AppRun -m pip install -U pip
-./squashfs-root/AppRun -m pip install '.[zim]'
+./squashfs-root/AppRun -m pip install '.[zim,js]'
 
 rm -f squashfs-root/AppRun
 cp AppImage/AppRun ./squashfs-root/usr/bin/levior-run
@@ -44,7 +44,6 @@ rm -rf squashfs-root/opt/python3.9/lib/python3.9/idlelib
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/lib2to3
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/ensurepip
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/tkinter
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/lxml
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/bs4/tests
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/pip
 rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/setuptools

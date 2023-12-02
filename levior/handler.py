@@ -289,6 +289,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
                 try:
                     resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                         try_url,
+                        config,
                         socks_proxy_url=socksp_url,
                         verify_ssl=config.verify_ssl,
                         user_agent=config.get('http_user_agent')
@@ -345,6 +346,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
             try:
                 resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                     req.url,
+                    config,
                     socks_proxy_url=socksp_url,
                     verify_ssl=config.verify_ssl,
                     user_agent=config.get('http_user_agent')

@@ -1,3 +1,21 @@
+## [1.2.4] - 2023-12-02
+
+### Added
+
+- Support for rendering webpages that use Javascript, by using pyppeteer
+  (via the "requests-html" package)
+
+## [1.2.3] - 2023-12-01
+
+### Added
+
+- Add unit tests for proxy+server
+
+### Changed
+
+- The "mode" setting can now be a comma-separated list of service modes
+- Return PROXY_REQUEST_REFUSED when necessary
+
 ## [1.2.2] - 2023-11-24
 
 ### Added

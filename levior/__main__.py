@@ -38,6 +38,9 @@ def get_config(args) -> DictConfig:
         'links_mode': args.md_links,
         'feathers_default': args.feathers,
 
+        'js_render': args.js_render,
+        'js_render_always': args.js_render_always,
+
         'urules': [{
             'regex': r'.*',
             'cache': args.cache_enable,

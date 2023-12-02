@@ -4,9 +4,12 @@
 
 *levior* (latin word meaning *lighter*) is a web (HTTP/HTTPs) to Gemini proxy.
 It converts web pages on-the-fly to
-the [gemtext](https://gemini.circumlunar.space/docs/gemtext.gmi) format,
+the [gemtext](https://geminiprotocol.net/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
+
+*levior* supports Javascript rendering and can therefore be used to browse
+dynamic websites.
 
 *levior* also supports serving other types of content, like ZIM files (the
 archive format used by Wikipedia), making it possible to browse complete wikis
@@ -40,6 +43,12 @@ pip install -e '.[zim]'
 pip install -e '.[uvloop]'
 ```
 
+For JS rendering, use the *js* extra:
+
+```sh
+pip install -e '.[js]'
+```
+
 # Usage
 
 *levior* can be configured from the command-line or via a *YAML* config file
@@ -49,7 +58,7 @@ See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/exam
 
 ```sh
 levior
-levior -d --mode=http-proxy
+levior -d --mode=proxy
 levior -c config.yaml
 ```
 
@@ -61,7 +70,25 @@ levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
 
+## Daemonization
+
 Use **--daemon** or **-d** to run levior as a daemon.
+
+## Javascript rendering
+
+*levior* (through the use of
+[requests-html](https://github.com/psf/requests-html) which uses the
+[pyppeteer](https://github.com/pyppeteer/pyppeteer)
+headless automation library) can render webpages that contain
+Javascript code.
+
+Pass **--js** on the command-line to enable Javascript
+rendering. Use **js-force** to always run JS rendering even if no JS scripts
+were detected on the page.
+
+**Note**: when you run levior with JS rendering for the first time, pyppeteer
+will download a copy of the browser binary that it requires to run
+(about ~300 Mb of free disk space is required).
 
 ## Service modes
 
@@ -152,7 +179,7 @@ mount:
 
 See the [example config file here](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml).
 
-## URLs
+## Server endpoints
 
 ### /
 

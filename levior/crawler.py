@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from omegaconf import DictConfig
 import aiohttp
+import re
 
 from aiohttp_socks import ProxyConnector
 
@@ -9,9 +11,17 @@ from urllib.parse import urljoin
 from yarl import URL
 from markdownify import MarkdownConverter
 
+try:
+    from requests_html import HTML
+    from requests_html import AsyncHTMLSession
+    have_rhtml = True
+except Exception:
+    have_rhtml = False
 
-ctypes_html = ['text/html', 'application/xhtml+xml']
+rhtml_session = None
+ctypes_html: list = ['text/html', 'application/xhtml+xml']
 user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
+scripts_re = re.compile(r'(?s)<(script).*?</\1>')
 
 
 @dataclass(frozen=True)
@@ -20,16 +30,20 @@ class RedirectRequired(Exception):
 
 
 async def fetch(url: URL,
+                config: DictConfig,
                 socks_proxy_url: str = None,
                 verify_ssl: bool = True,
                 user_agent: str = None) -> tuple:
     """
     :param URL url: The requested URL
+    :param DictConfig config: Configuration
     :param str socks_proxy_url: URL of the socks proxy to use
     :param bool verify_ssl: Verify SSL certificate validity
     :param str user_agent: HTTP user agent
     :rtype: tuple
     """
+
+    global rhtml_session
 
     headers = {
         'User-Agent': user_agent if user_agent else user_agent_default
@@ -69,15 +83,34 @@ async def fetch(url: URL,
                 ctype = ctypeh.split(';').pop(0)
                 clength = int(response.headers.get('Content-Length', 0))
 
-                if ctype in ctypes_html:
-                    try:
-                        return response, ctype, clength, await response.text()
-                    except Exception:
-                        # Revert to ISO-8859-1 if chardet fails
-                        return response, ctype, clength, \
-                            await response.text('ISO-8859-1')
-                else:
+                if ctype not in ctypes_html:
                     return response, ctype, clength, await response.read()
+
+                try:
+                    jsmatch = None
+                    html_text = await response.text()
+
+                    if config.js_render and have_rhtml:
+                        if rhtml_session is None:
+                            # No session yet, create one
+                            rhtml_session = AsyncHTMLSession()
+
+                        jsmatch = scripts_re.search(html_text)
+
+                    if have_rhtml and (jsmatch or config.js_render_always):
+                        # Use requests-html to render the JS code
+
+                        rhtml = HTML(html=html_text, session=rhtml_session)
+                        await rhtml.arender()
+
+                        return response, ctype, clength, rhtml.html
+
+                    return response, ctype, clength, html_text
+                except Exception:
+                    # Revert to ISO-8859-1 if chardet fails
+                    return response, ctype, clength, \
+                        await response.text('ISO-8859-1')
+
         except (aiohttp.ClientProxyConnectionError,
                 aiohttp.ClientConnectorError) as err:
             raise err

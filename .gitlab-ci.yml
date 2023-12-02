@@ -1,7 +1,7 @@
 image: python:3.9
 
 variables:
-  VERSION: "1.2.3"
+  VERSION: "1.2.4"
   TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
 
   WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
