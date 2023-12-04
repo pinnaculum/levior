@@ -60,3 +60,12 @@ urules:
     html_tags_ban: [
       'table'
     ]
+
+  - regexp: ".*"
+
+    # gemtext filters list
+    gemtext_filters:
+      # Remove all URLs containing 'google'
+      - filter: levior.filters.links:url_remove
+        urls:
+          - .*google

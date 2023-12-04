@@ -74,7 +74,48 @@ levior --tor
 
 Use **--daemon** or **-d** to run levior as a daemon.
 
+## Gemtext filters
+
+It's possible to run filters on the gemtext content that will be sent to
+the browser. In your config file, set the *gemtext_filters* property for the
+rule. For example, this will remove any email address link by running
+the *strip_emailaddrs* function found in the *levior.filters.links* python
+module (if you don't specify a function name, it will call the
+*gemtext_filter* function/coroutine in that module by default):
+
+```yaml
+urules:
+  - regexp: "https://searx.be/search"
+    gemtext_filters:
+      - levior.filters.links:strip_emailaddrs
+```
+
+This rule removes all (English) wikipedia URLs and PNG image URLs in the
+final gemtext:
+
+```yaml
+urules:
+  - regexp: ".*"
+    gemtext_filters:
+      - filter: levior.filters.links:url_remove
+        urls:
+          - ^https://en.wikipedia.org
+          - \.png$
+```
+
+Your filter (which can be a function or a coroutine) can return 3 different
+value types:
+
+- *boolean*: if your filter returns *True*, that gemtext line will be **removed**.
+- [Line](https://gitlab.com/lofidevops/trimgmi/-/blob/main/trimgmi/__init__.py?ref_type=heads#L99) (*trimgmi* class): If you return a *Line* object, it will be used
+  to **replace** the original gemtext line .
+- *str*: **replace** the original gemtext line with this raw string value
+
+Any other return value type will be ignored.
+
 ## Javascript rendering
+
+*Experimental feature*.
 
 *levior* (through the use of
 [requests-html](https://github.com/psf/requests-html) which uses the

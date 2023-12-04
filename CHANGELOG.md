@@ -1,3 +1,11 @@
+## [1.2.5] - 2023-12-03
+
+### Added
+
+- Gemtext filters system
+- Support custom gemini responses by defining the response attributes in the
+  YAML config inside the URL rule
+
 ## [1.2.4] - 2023-12-02
 
 ### Added

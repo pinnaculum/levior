@@ -7,15 +7,24 @@ from pathlib import Path
 
 from aiogemini.server import _RequestHandler, Request, Response
 
-from md2gemini import md2gemini
 import diskcache
+
+from md2gemini import md2gemini
+
+from omegaconf import OmegaConf
 from omegaconf import DictConfig
+
+from trimgmi import Document as GmiDocument
 
 from . import crawler
 from . import feed2gem
 from . import mounts
 
+from .filters import run_gemtext_filters
+
 from .response import data_response
+from .response import data_response_init
+from .response import Status
 from .response import error_response
 from .response import input_response
 from .response import redirect_response
@@ -83,6 +92,7 @@ async def build_response(req: Request,
     :param bool cached: Cached status in disl cache for this URL
     """
 
+    fdoc: GmiDocument = None
     loop = asyncio.get_event_loop()
     gemtext: str = None
 
@@ -93,6 +103,8 @@ async def build_response(req: Request,
         cache_ttl = float(url_config.get('ttl', config.cache_ttl_default))
     except BaseException:
         cache_ttl = 60 * 10
+
+    gemtext_filters = url_config.get('gemtext_filters', [])
 
     if rsc_ctype in ['application/xml',
                      'application/x-rss+xml',
@@ -147,11 +159,27 @@ async def build_response(req: Request,
                 req,
                 f'Geminification of {req.url} resulted in an empty document'
             )
-        else:
-            if not req.url.query and url_cache:
-                # Only cache documents with no query
-                cache_resource(url_cache, req.url, rsc_ctype, data,
-                               ttl=cache_ttl)
+
+        if gemtext_filters:
+            # Construct a GmiDocument with what we received
+            doc = GmiDocument()
+            for line in gemtext.splitlines():
+                doc.append(line)
+
+            # Run the filters on the document
+            fdoc = await run_gemtext_filters(
+                doc, OmegaConf.to_container(gemtext_filters)
+            )
+            await asyncio.sleep(0)
+
+            gemtext = '\n'.join(
+                [geml for geml in fdoc.emit_trim_gmi()]
+            )
+
+        if not req.url.query and url_cache:
+            # Only cache documents with no query
+            cache_resource(url_cache, req.url, rsc_ctype, data,
+                           ttl=cache_ttl)
 
         return await data_response(req, gemtext.encode(), 'text/gemini')
     else:
@@ -176,6 +204,35 @@ def server_geminize_url(config: DictConfig, url: URL) -> str:
         query=url.query,
         fragment=url.fragment
     )
+
+
+def get_custom_reply(url_config: DictConfig) -> DictConfig:
+    cresp = url_config.get('response')
+
+    if isinstance(cresp, DictConfig) and 'status' in cresp:
+        return cresp
+
+
+async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
+    rstatus = Status.SUCCESS
+    reason = cresp.get('reason')
+    content = cresp.get('text')
+
+    if isinstance(cresp.status, str):
+        try:
+            rstatus = getattr(Status, cresp.status)
+        except AttributeError:
+            pass
+
+    resp = data_response_init(req, status=rstatus)
+    if isinstance(reason, str):
+        resp.reason = reason
+
+    if isinstance(content, str):
+        await resp.write(content.encode())
+
+    await resp.write_eof()
+    return resp
 
 
 def create_levior_handler(config: DictConfig) -> _RequestHandler:
@@ -224,6 +281,11 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
                 'Levior is running in server mode, requested URLs must use '
                 'the gemini:// URL scheme'
             )
+
+        url_config = get_url_config(config, req.url)
+        cresp = get_custom_reply(url_config)
+        if cresp:
+            return await send_custom_reply(req, cresp)
 
         sp = req.url.path.split('/')
         comps = [x for x in sp if x != '']
@@ -317,7 +379,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
         return await build_response(
             req,
             config,
-            get_url_config(config, url),
+            url_config,
             cache,
             rsc_ctype,
             data,
@@ -338,6 +400,12 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
         if req.url.scheme not in ['http', 'https', 'ipfs', 'ipns']:
             return await error_response(
                 req, f'Unsupported URL scheme: {req.url.scheme}')
+
+        url_config = get_url_config(config, req.url)
+
+        cresp = get_custom_reply(url_config)
+        if cresp:
+            return await send_custom_reply(req, cresp)
 
         cached = cache.get(str(req.url)) if cache else None
         if cached:
@@ -364,7 +432,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
         return await build_response(
             req,
             config,
-            get_url_config(config, req.url),
+            url_config,
             cache,
             rsc_ctype,
             data,

@@ -1,22 +1,43 @@
 image: python:3.9
 
 variables:
-  VERSION: "1.2.4"
   TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
-
-  WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
-  WHEEL_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
-
-  APPIMAGE_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
-  APPIMAGE_LATEST_FILENAME: "${CI_PROJECT_NAME}-latest-x86_64.AppImage"
-  APPIMAGE_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
-
   DOCKER_REPOSITORY: "${CI_REGISTRY}/cipres/${CI_PROJECT_NAME}"
 
 stages:
+  - prepare
   - build
   - release
   - docker
+
+prepare:
+  image: python:3.9
+  stage: prepare
+  script:
+    - export VERSION=$(python -c 'import levior; print(levior.__version__)')
+    - >
+      echo "WHEEL_FILENAME=${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+      >> vars.env
+
+    - >
+      echo "WHEEL_ARTIFACT_URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+      >> vars.env
+
+    - >
+      echo "APPIMAGE_FILENAME=${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
+      >> vars.env
+
+    - >
+      echo "APPIMAGE_LATEST_FILENAME=${CI_PROJECT_NAME}-latest-x86_64.AppImage"
+      >> vars.env
+
+    - >
+      echo "APPIMAGE_ARTIFACT_URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-x86_64.AppImage"
+      >> vars.env
+
+  artifacts:
+    reports:
+      dotenv: vars.env
 
 build:
   stage: build
@@ -33,11 +54,12 @@ build:
     - source venv/bin/activate
     - python3 -m pip install --upgrade pip
 
-    - pip install wheel flake8 pytest pytest-asyncio
-    - pip install .
+    - pip install wheel flake8
+    - pip install '.[test]'
     - flake8 levior
 
     - python3 setup.py sdist bdist_wheel
+    - pytest -v -s tests
 
     - .gitlab/appimage-build
 
@@ -51,6 +73,7 @@ release:
   stage: release
   only:
     - master
+    - devel
   script:
     - apk add curl
 

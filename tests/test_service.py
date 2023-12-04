@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import pytest
 import asyncio
+import os
 import re
 
 from yarl import URL
@@ -21,6 +22,8 @@ from aiogemini.tofu import create_client_ssl_context
 from aiogemini.client import Client
 from aiogemini.client.protocol import Request
 from aiogemini.client.protocol import Protocol
+
+from trimgmi import LineType
 
 
 @dataclass
@@ -57,7 +60,43 @@ class LeviorClient(Client):
             proxy[1],
             ssl=self.ssl
         )
-        return await protocol.response
+        resp = await protocol.response
+        return resp, await resp.read()
+
+
+def pythonclock_rw(fctx):
+    # Basic rewriting filter
+
+    if fctx.line.type == LineType.HEADING1 and \
+       fctx.line.text.startswith('Python 2.7 will retire in'):
+        return '# Python never retires'
+
+
+@pytest.fixture
+def config_with_filters(tmpdir):
+    cfg = OmegaConf.create({
+        'urules': [
+            {
+                'regexp': 'https://searx.be/search',
+                'gemtext_filters': [
+                    'levior.filters.links:strip_emailaddrs'
+                ]
+            },
+            {
+                'regexp': 'https://pythonclock.org',
+                'gemtext_filters': [
+                    'tests.test_service:pythonclock_rw'
+                ]
+            }
+        ]
+    })
+
+    cfgp = Path(tmpdir).joinpath('srv1_rules.yaml')
+
+    with open(cfgp, 'wt') as fd:
+        OmegaConf.save(cfg, fd)
+
+    return cfgp
 
 
 @pytest.fixture
@@ -77,30 +116,40 @@ def mixed_mode_args():
     return parse_args(['--mode=proxy,server'])
 
 
+async def service_with_args(args):
+    config, srv = levior_configure_server(args)
+    f = asyncio.ensure_future(srv.serve())
+    await asyncio.sleep(1)
+    return f, config, srv
+
+
 @pytest.fixture
 async def server():
-    config, srv = levior_configure_server(server_mode_args())
-    f = asyncio.ensure_future(srv.serve())
-    await asyncio.sleep(2)
+    f, config, srv = await service_with_args(server_mode_args())
     yield srv
     f.cancel()
 
 
 @pytest.fixture
 async def proxy_server():
-    config, srv = levior_configure_server(proxy_mode_args())
+    f, config, srv = await service_with_args(proxy_mode_args())
     assert config.mode == 'proxy'
-    f = asyncio.ensure_future(srv.serve())
-    await asyncio.sleep(2)
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def proxy_server_with_filters(config_with_filters):
+    f, config, srv = await service_with_args(
+        parse_args(['--mode=proxy', '-c', str(config_with_filters)])
+    )
     yield srv
     f.cancel()
 
 
 @pytest.fixture
 async def mixed_server():
-    config, srv = levior_configure_server(mixed_mode_args())
-    f = asyncio.ensure_future(srv.serve())
-    await asyncio.sleep(2)
+    f, config, srv = await service_with_args(mixed_mode_args())
     yield srv
     f.cancel()
 
@@ -227,20 +276,20 @@ class TestLeviorModes:
         assert resp.content_type == 'image/png'
 
         # In server-only mode, this should fail with PROXY_REQUEST_REFUSED
-        resp = await client.proxy_request('https://docs.aiohttp.org')
+        resp, data = await client.proxy_request('https://docs.aiohttp.org')
         assert resp.status == Status.PROXY_REQUEST_REFUSED
 
     @pytest.mark.asyncio
     async def test_proxy_mode(self, proxy_server, client):
-        resp = await client.proxy_request('https://docs.aiohttp.org')
+        resp, data = await client.proxy_request('https://docs.aiohttp.org')
         assert resp.status == Status.REDIRECT_TEMPORARY
         assert resp.reason == 'https://docs.aiohttp.org/en/stable/'
 
-        resp = await client.proxy_request(resp.reason)
+        resp, data = await client.proxy_request(resp.reason)
         assert resp.status == Status.SUCCESS
-        data = (await resp.read()).decode()
+        # data = (await resp.read()).decode()
         assert resp.content_type.startswith('text/gemini')
-        assert data.splitlines()[0].startswith('Welcome to AIOHTTP')
+        assert data.decode().splitlines()[0].startswith('Welcome to AIOHTTP')
 
         # In proxy-only mode, this should fail with PROXY_REQUEST_REFUSED
         resp = await client.send_request(
@@ -253,7 +302,7 @@ class TestLeviorModes:
         Verify that in the proxy+server mode, both types of requests are
         allowed to go through.
         """
-        resp = await client.proxy_request(
+        resp, data = await client.proxy_request(
             'https://docs.aiohttp.org/en/stable/')
         assert resp.status == Status.SUCCESS
 
@@ -262,19 +311,47 @@ class TestLeviorModes:
         assert resp.status == Status.INPUT
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.getenv("LEVIOR_PYTEST_IPFS") is None,
+        reason="Not testing IPFS proxying in this environment"
+    )
     async def test_proxy_ipfs(self, proxy_server, client):
         # Fetch some IPFS file and verify the checksum
         h = hashlib.sha256()
-        resp = await client.proxy_request(
+        resp, data = await client.proxy_request(
             'ipfs://bafybeigrf2dwtpjkiovnigysyto3d55opf6qkdikx6d65onrqnfzwgdkfa'  # noqa
         )
         assert resp.status == Status.SUCCESS
-        h.update(await resp.read())
+        h.update(data)
 
         assert h.hexdigest() == \
             'c749ac31ca6e6b917bdbd4148a7c0fec6fea2aaa036211211bddf8d6ae4c33f4'
 
     @pytest.mark.asyncio
     async def test_proxy_feed(self, proxy_server, client):
-        resp = await client.proxy_request('https://openrss.org/rss')
+        resp, data = await client.proxy_request('https://openrss.org/rss')
         assert resp.content_type.startswith('text/gemini')
+
+
+class TestGemtextFilters:
+    @pytest.mark.asyncio
+    async def test_filters(self, proxy_server_with_filters, client):
+        # Check that all email address links are removed by the
+        # strip_emailaddrs filter
+
+        resp, data = await client.proxy_request(
+            'https://searx.be/search?q=cats')
+
+        for line in data.decode().splitlines():
+            assert not line.startswith('=> mailto:')
+
+        # Test rewriting headings
+        resp, data = await client.proxy_request('https://pythonclock.org')
+        found = False
+        for line in data.decode().splitlines():
+            assert not line.startswith('# Python 2.7 will retire in')
+            if line == '# Python never retires':
+                found = True
+                break
+
+        assert found

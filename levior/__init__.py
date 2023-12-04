@@ -1,7 +1,7 @@
 import pkg_resources
 
 
-__version__ = '1.2.4'
+__version__ = '1.2.5'
 
 
 def default_cert_paths() -> tuple:
