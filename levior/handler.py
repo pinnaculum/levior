@@ -13,6 +13,7 @@ from md2gemini import md2gemini
 
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
+from omegaconf import ListConfig
 
 from trimgmi import Document as GmiDocument
 
@@ -50,10 +51,18 @@ def get_url_config(config: DictConfig, url: URL) -> dict:
 
     for urlc in config.get('urules', []):
         mtype, urlre = urlc.get('mime'), urlc.get('regexp')
+
         if not urlre and not mtype:
             continue
 
-        if isinstance(urlre, str) and re.search(urlre, str(url)):
+        if isinstance(urlre, ListConfig):
+            regs = list(urlre)
+        elif isinstance(urlre, str):
+            regs = [urlre]
+        else:
+            continue
+
+        if any(re.search(reg, str(url)) for reg in regs):
             url_config.update(urlc)
 
             # First hit wins

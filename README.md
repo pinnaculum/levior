@@ -85,13 +85,20 @@ module (if you don't specify a function name, it will call the
 
 ```yaml
 urules:
-  - regexp: "https://searx.be/search"
+  - regexp:
+    - "https://searx.be/search"
+    - "https://lite.duckduckgo.com/lite/search"
+
     gemtext_filters:
       - levior.filters.links:strip_emailaddrs
+      - levior.filters:get_out
+        re:
+          - 'google'
+          - 'stop'
 ```
 
-This rule removes all (English) wikipedia URLs and PNG image URLs in the
-final gemtext:
+You can also pass params to your filter. This rule removes all (English)
+wikipedia URLs and PNG image URLs in the final gemtext:
 
 ```yaml
 urules:
@@ -103,15 +110,22 @@ urules:
           - \.png$
 ```
 
-Your filter (which can be a function or a coroutine) can return 3 different
+Your filter (which can be a function or a coroutine) can return different
 value types:
 
-- *boolean*: if your filter returns *True*, that gemtext line will be **removed**.
+- *boolean*: if your filter returns *True*, that gemtext line will be **removed** (filtered out).
 - [Line](https://gitlab.com/lofidevops/trimgmi/-/blob/main/trimgmi/__init__.py?ref_type=heads#L99) (*trimgmi* class): If you return a *Line* object, it will be used
-  to **replace** the original gemtext line .
+  to **replace** the original gemtext line.
+- *list*: If you return a list of *Line* objects, they will be inserted in
+  place
 - *str*: **replace** the original gemtext line with this raw string value
+- *int*: If your filter returns a negative integer, everything after that in
+  the document (including that line) will be removed.
 
 Any other return value type will be ignored.
+
+Checkout [https://gitlab.com/cipres/levior/-/tree/master/levior/filters](the
+filters package) to see the available builtin filters.
 
 ## Javascript rendering
 
