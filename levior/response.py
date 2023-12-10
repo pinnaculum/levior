@@ -1,6 +1,6 @@
 from yarl import URL
 from aiogemini import Status, GEMINI_MEDIA_TYPE
-from aiogemini.server import Response
+from aiogemini.server import Request, Response
 
 
 def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
@@ -43,8 +43,11 @@ async def redirect_response(req, url: URL) -> Response:
 
 
 async def error_response(req, message: str,
+                         status=Status.TEMPORARY_FAILURE,
                          content_type=GEMINI_MEDIA_TYPE) -> Response:
-    return await data_response(req, message.encode())
+    return await data_response(req,
+                               message.encode(),
+                               status=status)
 
 
 async def proxy_reqrefused_response(req, message: str) -> Response:
@@ -52,3 +55,28 @@ async def proxy_reqrefused_response(req, message: str) -> Response:
     await response.write(message.encode())
     await response.write_eof()
     return response
+
+
+async def http_crawler_error_response(req: Request,
+                                      http_status: int) -> Response:
+    status: Status = Status.TEMPORARY_FAILURE
+
+    if http_status == 400:
+        status = Status.BAD_REQUEST
+    elif http_status == 404:
+        status = Status.NOT_FOUND
+    elif http_status in [502, 504]:
+        status = Status.PROXY_ERROR
+    elif http_status == 503:
+        status = Status.SERVER_UNAVAILABLE
+    elif http_status == 429:
+        status = Status.SLOW_DOWN
+    elif http_status == 410:
+        status = Status.GONE
+
+    return await error_response(
+        req,
+        f'# HTTP crawler error for: {req.url}\n'
+        f'HTTP status code: {http_status}',
+        status=status
+    )

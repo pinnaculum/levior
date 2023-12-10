@@ -5,6 +5,7 @@ import traceback
 from yarl import URL
 from pathlib import Path
 
+from aiogemini import Status
 from aiogemini.server import _RequestHandler, Request, Response
 
 import diskcache
@@ -23,9 +24,9 @@ from . import mounts
 
 from .filters import run_gemtext_filters
 
+from .response import http_crawler_error_response
 from .response import data_response
 from .response import data_response_init
-from .response import Status
 from .response import error_response
 from .response import input_response
 from .response import redirect_response
@@ -382,8 +383,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
                 )
 
             if not resp or not rsc_ctype or resp.status != 200:
-                return await error_response(
-                    req, f'HTTP error code: {resp.status}')
+                return await http_crawler_error_response(req, resp.status)
 
         return await build_response(
             req,
@@ -435,8 +435,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
                 return await error_response(req, traceback.format_exc())
 
             if not resp or not rsc_ctype or resp.status != 200:
-                return await error_response(
-                    req, f'HTTP error code: {resp.status}')
+                return await http_crawler_error_response(req, resp.status)
 
         return await build_response(
             req,

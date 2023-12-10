@@ -91,7 +91,7 @@ urules:
 
     gemtext_filters:
       - levior.filters.links:strip_emailaddrs
-      - levior.filters:get_out
+      - filter: levior.filters:get_out
         re:
           - 'google'
           - 'stop'
