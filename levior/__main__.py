@@ -1,14 +1,20 @@
 import asyncio
+import os
+
 from pathlib import Path
+from importlib import resources
+from typing import Union, TextIO
 
 from aiogemini.tofu import create_server_ssl_context
 from aiogemini.server import Server
 
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
+from omegaconf import ListConfig
 
 from . import default_cert_paths
 from .handler import create_levior_handler
+from .rules import parse_rules
 
 
 try:
@@ -18,7 +24,76 @@ except Exception:
     pass
 
 
+def load_config_file(arg: Union[Path, TextIO]) -> tuple:
+    """
+    Load a levior config file and returns a tuple containing the
+    config (as a DictConfig) and the list of URL rules
+    """
+
+    rules: list = []
+    file_cfg: DictConfig = None
+
+    if isinstance(arg, Path):
+        fd = open(arg, 'rt')
+    else:
+        fd = arg
+
+    file_cfg = OmegaConf.load(fd)
+
+    assert file_cfg
+
+    # Load rules from this file
+    rules += parse_rules(file_cfg)
+
+    includes = file_cfg.get('include')
+
+    # Handle includes
+    if isinstance(includes, ListConfig):
+        for inc in file_cfg.include:
+            inccfg: DictConfig = None
+            loadt: str = None
+
+            if isinstance(inc, DictConfig):
+                iref = inc.get('src')
+                iparams = inc.get('with')
+            elif isinstance(inc, str):
+                iref, iparams = inc, None
+
+            if isinstance(iparams, DictConfig) and 0:
+                # Set env vars passed in 'with' (disabled for now)
+                for key, val in iparams.items():
+                    if isinstance(val, (str, int, float)):
+                        os.environ[f'LEV_{key}'] = str(val)
+
+            if not isinstance(iref, str):
+                continue
+
+            if ':' in iref:
+                loadt, path = iref.split(':')
+            else:
+                loadt, path = None, iref
+
+            if loadt in ['levior', 'lev']:
+                if not path.endswith('.yaml'):
+                    path += '.yaml'
+
+                inccfg = OmegaConf.load(
+                    resources.open_text('levior.configs',
+                                        path)
+                )
+            elif not loadt:
+                # Local file
+                inccfg = OmegaConf.load(open(path, 'rt'))
+
+            if inccfg:
+                rules += parse_rules(inccfg)
+
+    return file_cfg, rules
+
+
 def get_config(args) -> DictConfig:
+    rules: list = []
+
     config = OmegaConf.create({
         'gemini_cert': args.gemini_cert,
         'gemini_key': args.gemini_key,
@@ -52,14 +127,13 @@ def get_config(args) -> DictConfig:
 
     if cfgp and cfgp.is_file():
         try:
-            with open(args.config_path, 'rt') as fd:
-                file_cfg = OmegaConf.load(fd)
+            file_cfg, rules = load_config_file(args.config_path)
 
             config = OmegaConf.merge(config, file_cfg)
         except Exception as err:
             raise err
 
-    return config
+    return config, rules
 
 
 def levior_configure_server(args) -> (DictConfig, Server):
@@ -70,7 +144,7 @@ def levior_configure_server(args) -> (DictConfig, Server):
     :rtype: Server
     """
 
-    config = get_config(args)
+    config, rules = get_config(args)
 
     try:
         for mode in config.mode.split(','):
@@ -88,7 +162,7 @@ def levior_configure_server(args) -> (DictConfig, Server):
 
     return (config, Server(
         create_server_ssl_context(cert_path, key_path),
-        create_levior_handler(config),
+        create_levior_handler(config, rules),
         host=config.get('hostname', 'localhost'),
         port=config.get('port', 1965)
     ))

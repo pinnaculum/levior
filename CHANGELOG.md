@@ -1,3 +1,9 @@
+## [1.2.6] - 2024-01-18
+
+### Added
+
+- Support for including external config files
+
 ## [1.2.5] - 2023-12-03
 
 ### Added

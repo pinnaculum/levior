@@ -1,0 +1,28 @@
+#
+# France TV Info
+# Rules for francetvinfo.fr
+#
+
+rules:
+  - url: '^https?://[\\w.-]*francetvinfo.fr'
+    gemtext_filters:
+      - filter: levior.filters.links:url_remove
+        urls:
+          - '.*\.(png|jpg|jpeg|webp)$'
+
+      - filter: levior.filters:get_out
+        re:
+          - '^Partager'
+          - '^------'
+
+      - levior.filters:rm_bracketed_digits
+
+      - filter: levior.filters:text_filter
+        re:
+          - '^Sous-menu'
+          - 'Menu'
+          - 'Accéder'
+          - '^aller'
+          - '^participer'
+          - "Suivez l'actu"
+          - '^tout lire'

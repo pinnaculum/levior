@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import re
 import traceback
 from yarl import URL
 from pathlib import Path
@@ -14,7 +13,6 @@ from md2gemini import md2gemini
 
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
-from omegaconf import ListConfig
 
 from trimgmi import Document as GmiDocument
 
@@ -44,27 +42,17 @@ def cache_resource(cache: diskcache.Cache,
         return False
 
 
-def get_url_config(config: DictConfig, url: URL) -> dict:
+def get_url_config(config: DictConfig,
+                   rules: list,
+                   url: URL) -> dict:
     url_config = {
         'cache': False,
         'ttl': 0
     }
 
-    for urlc in config.get('urules', []):
-        mtype, urlre = urlc.get('mime'), urlc.get('regexp')
-
-        if not urlre and not mtype:
-            continue
-
-        if isinstance(urlre, ListConfig):
-            regs = list(urlre)
-        elif isinstance(urlre, str):
-            regs = [urlre]
-        else:
-            continue
-
-        if any(re.search(reg, str(url)) for reg in regs):
-            url_config.update(urlc)
+    for rule in rules:
+        if any(reg.search(str(url)) for reg in rule.regexps):
+            url_config.update(rule.config)
 
             # First hit wins
             break
@@ -245,7 +233,7 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
-def create_levior_handler(config: DictConfig) -> _RequestHandler:
+def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
     try:
         if config.get('tor') is True:
             socksp_url = 'socks5://localhost:9050'
@@ -292,7 +280,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
                 'the gemini:// URL scheme'
             )
 
-        url_config = get_url_config(config, req.url)
+        url_config = get_url_config(config, rules, req.url)
         cresp = get_custom_reply(url_config)
         if cresp:
             return await send_custom_reply(req, cresp)
@@ -410,7 +398,7 @@ def create_levior_handler(config: DictConfig) -> _RequestHandler:
             return await error_response(
                 req, f'Unsupported URL scheme: {req.url.scheme}')
 
-        url_config = get_url_config(config, req.url)
+        url_config = get_url_config(config, rules, req.url)
 
         cresp = get_custom_reply(url_config)
         if cresp:

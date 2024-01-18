@@ -38,15 +38,15 @@ links_mode: paragraph
 # feathers = 0-1 will remove images and links outside of the visited website
 
 urules:
-  - regexp: "https?://searx.be"
+  - url: "https?://searx.be"
     images: false
 
-  - regexp: ".html?$"
+  - url: ".html?$"
     cache: true
     ttl: 300
     feathers: 0
 
-  - regexp: "https?://off-guardian.org"
+  - url: "https?://off-guardian.org"
     cache: true
     ttl: 900
 

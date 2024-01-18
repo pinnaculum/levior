@@ -74,7 +74,46 @@ levior --tor
 
 Use **--daemon** or **-d** to run levior as a daemon.
 
-## Gemtext filters
+## URL rules
+
+You can define your own rules in order to apply some processing on the gemtext
+that will be sent to the browser, or return a specific gemini response.
+
+A rule must define which URL(s) to match with the *url* attribute, which can
+be a regular expression or a list of regular expressions. If the *response*
+attribute is defined, the *status* attribute must be set as an
+[aiogemini Status code](https://github.com/keis/aiogemini/blob/master/aiogemini/__init__.py). Here are some basic examples of custom rules:
+
+```yaml
+rules:
+  - url: '^https?://[\\w.-]*google'
+    response:
+      status: 'PROXY_REQUEST_REFUSED'
+```
+
+```yaml
+rules:
+  - url: '^https?://www.example.org'
+    response:
+      status: 'SUCCESS'
+      text: |-
+        Gemtext content
+```
+
+### Includes
+
+It is also possible to load predefined rules by using the *include* keyword
+in your config file. If you prefix the path with *levior:*, it will be loaded
+from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/levior/configs) (please [open a PR](https://gitlab.com/cipres/levior/-/merge_requests/new) to submit new rules), otherwise it is assumed to be a local file.
+
+```yaml
+include:
+  - levior:lemmy.yaml
+  - levior:francetvinfo.yaml
+  - my_rules.yaml
+```
+
+### Gemtext filters
 
 It's possible to run filters on the gemtext content that will be sent to
 the browser. In your config file, set the *gemtext_filters* property for the
@@ -85,7 +124,7 @@ module (if you don't specify a function name, it will call the
 
 ```yaml
 urules:
-  - regexp:
+  - url:
     - "https://searx.be/search"
     - "https://lite.duckduckgo.com/lite/search"
 
@@ -102,7 +141,7 @@ wikipedia URLs and PNG image URLs in the final gemtext:
 
 ```yaml
 urules:
-  - regexp: ".*"
+  - url: ".*"
     gemtext_filters:
       - filter: levior.filters.links:url_remove
         urls:

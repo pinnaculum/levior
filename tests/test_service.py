@@ -156,7 +156,7 @@ async def mixed_server():
 
 class TestURLs:
     def test_suburl(self):
-        cfg = get_config(parse_args([]))
+        cfg, rules = get_config(parse_args([]))
         url = server_geminize_url(cfg, URL('https://docs.aiohttp.org'))
         assert str(url) == 'gemini://localhost/docs.aiohttp.org/'
 
@@ -179,6 +179,7 @@ class TestCrawler:
         """
         Test URLs rewriting in server mode
         """
+        config, rules = get_config(parse_args(['--mode=server']))
         conv = PageConverter(
             domain='test.org',
             http_proxy_mode=False,
@@ -186,7 +187,7 @@ class TestCrawler:
                 'cache': False,
                 'ttl': 0
             },
-            levior_config=get_config(parse_args(['--mode=server'])),
+            levior_config=config,
             autolinks=False,
             wrap=True,
             wrap_width=80
@@ -204,11 +205,11 @@ class TestCrawler:
 
 class TestLeviorConfig:
     def test_configuration(self, tmpdir):
-        cfg = get_config(parse_args([]))
+        cfg, rules = get_config(parse_args([]))
         assert cfg.hostname == 'localhost'
         assert cfg.port == 1965
 
-        cfg = get_config(
+        cfg, rules = get_config(
             parse_args(['--daemonize', '--https-only', '--mode=proxy'])
         )
 
@@ -225,7 +226,7 @@ class TestLeviorConfig:
         with open(cfgf, 'wt') as f:
             OmegaConf.save(cfg, f)
 
-        cfg = get_config(parse_args(['-c', str(cfgf)]))
+        cfg, rules = get_config(parse_args(['-c', str(cfgf)]))
         assert cfg.daemonize is True
 
 
