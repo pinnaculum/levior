@@ -1,5 +1,7 @@
 import asyncio
 import os
+import traceback
+from io import StringIO
 
 from pathlib import Path
 from importlib import resources
@@ -13,6 +15,7 @@ from omegaconf import DictConfig
 from omegaconf import ListConfig
 
 from . import default_cert_paths
+from . import ocresolvers  # noqa
 from .handler import create_levior_handler
 from .rules import parse_rules
 
@@ -73,20 +76,35 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
             else:
                 loadt, path = None, iref
 
-            if loadt in ['levior', 'lev']:
-                if not path.endswith('.yaml'):
-                    path += '.yaml'
+            cfd = StringIO()
+            if iparams:
+                OmegaConf.save(config=iparams, f=cfd)
 
-                inccfg = OmegaConf.load(
-                    resources.open_text('levior.configs',
-                                        path)
-                )
+            if not path.endswith('.yaml'):
+                path += '.yaml'
+
+            if loadt in ['levior', 'lev']:
+                # Load from the builtin library
+
+                with resources.path('levior.configs', '.') as rp:
+                    with open(rp.joinpath(path), 'rt') as f:
+                        cfd.write(f.read())
             elif not loadt:
                 # Local file
-                inccfg = OmegaConf.load(open(path, 'rt'))
 
-            if inccfg:
+                with open(path, 'rt') as f:
+                    cfd.write(f.read())
+
+            cfd.seek(0, 0)
+
+            try:
+                inccfg = OmegaConf.load(cfd)
+                assert isinstance(inccfg, DictConfig)
+
                 rules += parse_rules(inccfg)
+            except Exception:
+                traceback.print_exc()
+                continue
 
     return file_cfg, rules
 

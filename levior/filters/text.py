@@ -44,3 +44,18 @@ def get_out(fctx) -> int:
 
     if any(re.search(reg, fctx.line.text) for reg in textre):
         return -1
+
+
+def uppercased(fctx):
+    assert is_text(fctx.line)
+
+    words = fctx.params.get('words', [])
+
+    if not words:
+        return fctx.line
+
+    fctx.line.text = ' '.join(
+        w.upper() if w in words else w for w in fctx.line.text.split()
+    )
+
+    return fctx.line

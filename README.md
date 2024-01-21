@@ -108,9 +108,34 @@ from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/
 
 ```yaml
 include:
-  - levior:lemmy.yaml
-  - levior:francetvinfo.yaml
+  - levior:sites/francetvinfo.yaml
   - my_rules.yaml
+```
+
+Rules can receive parameters, allowing the creation of more generic rules
+that can be applied to any URL.
+
+```yaml
+rules:
+  - url: ${URL}
+    gemtext_filters:
+      - filter: levior.filters:uppercased
+        words: ${uwords}
+```
+
+To pass params to the rule from the config file, set the rule path by setting
+the *src* attribute, and set the params via the *with* attribute.
+
+```yaml
+include:
+  - src: words_upper.yaml
+    with:
+      URL:
+        - https://example.org/.*.html
+        - https://domain.io
+      uwords:
+        - coffee
+        - milk
 ```
 
 ### Gemtext filters
@@ -163,8 +188,7 @@ value types:
 
 Any other return value type will be ignored.
 
-Checkout [https://gitlab.com/cipres/levior/-/tree/master/levior/filters](the
-filters package) to see the available builtin filters.
+Checkout [the filters package](https://gitlab.com/cipres/levior/-/tree/master/levior/filters) to see all the available builtin filters.
 
 ## Javascript rendering
 

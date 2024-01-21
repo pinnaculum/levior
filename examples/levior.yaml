@@ -31,6 +31,10 @@ links_mode: paragraph
 # Use a socks5 proxy
 # socks5_proxy: socks5://localhost:9050
 
+# include:
+#   - levior:sites/francetvinfo.yaml
+#   - myrules.yaml
+
 # URL rules: first match wins
 # The 'feathers' option (integer between 0 and 5) controls how 'light' the
 # gemtext document will be

@@ -11,6 +11,8 @@ from trimgmi import Line
 from .text import rm_bracketed_digits  # noqa
 from .text import text_filter  # noqa
 from .text import get_out  # noqa
+from .text import uppercased  # noqa
+from .misc import only_linetypes  # noqa
 
 
 @dataclass

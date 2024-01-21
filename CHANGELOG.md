@@ -1,3 +1,11 @@
+## [1.2.7] - 2024-01-25
+
+### Added
+
+- Config files sourced via "include" can now receive parameters
+- "only_linetypes" gemtext filter
+- "uppercased" gemtext filter
+
 ## [1.2.6] - 2024-01-18
 
 ### Added
