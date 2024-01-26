@@ -33,6 +33,7 @@ links_mode: paragraph
 
 # include:
 #   - levior:sites/francetvinfo.yaml
+#   - levior:sites/off-guardian.yaml
 #   - myrules.yaml
 
 # URL rules: first match wins
@@ -49,21 +50,6 @@ urules:
     cache: true
     ttl: 300
     feathers: 0
-
-  - url: "https?://off-guardian.org"
-    cache: true
-    ttl: 900
-
-    # Put links at the end of the page
-    links_mode: at-end
-
-    # Allowed domains for http links
-    http_links_domains: ['off-guardian.org']
-
-    # Example of how to ban extra HTML tags
-    html_tags_ban: [
-      'table'
-    ]
 
   - regexp: ".*"
 

@@ -1,0 +1,25 @@
+# Rules for https://off-guardian.org
+
+rules:
+  - url: '^https://[\\w.-]*off-guardian.org'
+    cache: ${oc.select:cache,false}
+    ttl: ${oc.select:cache_ttl,900}
+
+    # Allowed domains for http links
+    http_links_domains: ['off-guardian.org']
+
+    html_tags_ban:
+      - table
+
+    gemtext_filters:
+      - levior.filters:rm_bracketed_digits
+
+      # Remove lines that just contain '*'
+      - filter: levior.filters:text_filter
+        re:
+          - '^\\*\s*$'
+
+      # Remove article URLs that just contain digits
+      - filter: levior.filters.links:url_remove
+        text:
+          - '^\d+$'

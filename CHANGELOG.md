@@ -5,6 +5,12 @@
 - Config files sourced via "include" can now receive parameters
 - "only_linetypes" gemtext filter
 - "uppercased" gemtext filter
+- "puretext" rule
+- Rules for "off-guardian.org"
+
+### Changed
+
+- The "url_remove" filter can now also remove links based on the URL's title
 
 ## [1.2.6] - 2024-01-18
 

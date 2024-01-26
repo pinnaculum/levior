@@ -100,6 +100,29 @@ def config_with_filters(tmpdir):
 
 
 @pytest.fixture
+def config_with_includes(tmpdir):
+    cfg = OmegaConf.create({
+        'include': [
+            {
+                'src': 'levior:puretext',
+                'with': {
+                    'URL': [
+                        'https://searx.be'
+                    ]
+                }
+            }
+        ]
+    })
+
+    cfgp = Path(tmpdir).joinpath('srv2_includes.yaml')
+
+    with open(cfgp, 'wt') as fd:
+        OmegaConf.save(cfg, fd)
+
+    return cfgp
+
+
+@pytest.fixture
 def client():
     return LeviorClient()
 
@@ -142,6 +165,15 @@ async def proxy_server():
 async def proxy_server_with_filters(config_with_filters):
     f, config, srv = await service_with_args(
         parse_args(['--mode=proxy', '-c', str(config_with_filters)])
+    )
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def proxy_server_with_includes(config_with_includes):
+    f, config, srv = await service_with_args(
+        parse_args(['--mode=proxy', '-c', str(config_with_includes)])
     )
     yield srv
     f.cancel()
@@ -356,3 +388,14 @@ class TestGemtextFilters:
                 break
 
         assert found
+
+
+class TestIncludes:
+    @pytest.mark.asyncio
+    async def test_puretext(self, proxy_server_with_includes, client):
+        resp, data = await client.proxy_request(
+            'https://searx.be/search?q=cats')
+
+        # Test that all links are removed by the puretext rule
+        for line in data.decode().splitlines():
+            assert not line.startswith('=>')

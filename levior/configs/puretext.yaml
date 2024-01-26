@@ -1,0 +1,11 @@
+rules:
+  - url: ${URL}
+    gemtext_filters:
+      - filter: levior.filters:only_linetypes
+        types:
+          - heading1
+          - heading2
+          - heading3
+          - regular
+          - quote
+          - list_item

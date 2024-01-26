@@ -21,6 +21,8 @@ def url_remove(fctx: FilterContext) -> Union[Line, str, bool]:
     """
 
     uregexps = fctx.params.get('urls', [])
+    utext = fctx.params.get('text', [])
 
     if fctx.line.type == LineType.LINK:
-        return any(re.search(reg, fctx.line.extra) for reg in uregexps)
+        return any(re.search(reg, fctx.line.extra) for reg in uregexps) or \
+            any(re.search(reg, fctx.line.text) for reg in utext)

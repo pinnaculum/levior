@@ -86,9 +86,10 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
             if loadt in ['levior', 'lev']:
                 # Load from the builtin library
 
-                with resources.path('levior.configs', '.') as rp:
-                    with open(rp.joinpath(path), 'rt') as f:
-                        cfd.write(f.read())
+                rp = resources.files('levior') / 'configs'
+
+                with open(rp.joinpath(path), 'rt') as f:
+                    cfd.write(f.read())
             elif not loadt:
                 # Local file
 

@@ -56,6 +56,10 @@ pip install -e '.[js]'
 a unique config, with the config file settings taking precedence).
 See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.yaml). URL rules can only be configured with a config file.
 
+levior uses the [OmegaConf library](https://omegaconf.readthedocs.io) to
+parse the YAML config files, therefore all the specific syntax elements
+supported by *OmegaConf* can be used in your configuration files.
+
 ```sh
 levior
 levior -d --mode=proxy
@@ -104,7 +108,9 @@ rules:
 
 It is also possible to load predefined rules by using the *include* keyword
 in your config file. If you prefix the path with *levior:*, it will be loaded
-from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/levior/configs) (please [open a PR](https://gitlab.com/cipres/levior/-/merge_requests/new) to submit new rules), otherwise it is assumed to be a local file.
+from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/levior/configs) (please [open a PR](https://gitlab.com/cipres/levior/-/merge_requests/new) to submit new rules), otherwise it is assumed to be a local file. Because
+all the config files use the YAML syntax, you can omit the *.yaml* suffix
+in the filename (it will be appended automatically).
 
 ```yaml
 include:
@@ -136,6 +142,17 @@ include:
       uwords:
         - coffee
         - milk
+```
+
+The *puretext* rule keeps only the text content:
+
+```yaml
+include:
+  - src: levior:puretext
+    with:
+      URL:
+        - https://example.org
+        - https://example2.org
 ```
 
 ### Gemtext filters
