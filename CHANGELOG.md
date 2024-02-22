@@ -1,3 +1,10 @@
+## [1.2.8] - 2024-02-21
+
+### Added
+
+- Support for Atom/RSS feeds aggregation rules. The feeds defined in the rule
+  are aggregated and converted to a single tinylog accessible via a gemini URL.
+
 ## [1.2.7] - 2024-01-25
 
 ### Added

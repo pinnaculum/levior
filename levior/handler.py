@@ -191,6 +191,49 @@ async def build_response(req: Request,
             return await error_response(req, 'Empty page')
 
 
+async def feeds_aggregate(req: Request,
+                          config: DictConfig,
+                          url_config: dict,
+                          gemini_server_host: str = None) -> Response:
+    loop = asyncio.get_event_loop()
+    gemtext: str = None
+    feeds: list = []
+
+    feeds_config = url_config.get('feeds')
+    sort_mode = url_config.get('sort_mode', 'date')
+
+    for feed_url, feed_config in feeds_config.items():
+        try:
+            resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
+                URL(feed_url),
+                config,
+                url_config,
+                verify_ssl=config.verify_ssl,
+                user_agent=config.get('http_user_agent')
+            )
+        except crawler.RedirectRequired:
+            continue
+        except Exception:
+            traceback.print_exc()
+            continue
+        else:
+            feed = await loop.run_in_executor(
+                None,
+                feed2gem.feed_fromdata,
+                data.decode()
+            )
+
+            if feed:
+                feeds.append(feed)
+
+    gemtext = feed2gem.feeds2tinylog(feeds, sort_mode=sort_mode)
+
+    if gemtext:
+        return await data_response(req, gemtext.encode(), 'text/gemini')
+    else:
+        return await error_response(req, 'Failed to aggregate feeds')
+
+
 def server_geminize_url(config: DictConfig, url: URL) -> str:
     if url.scheme == 'gemini':
         return url
@@ -288,6 +331,11 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
         sp = req.url.path.split('/')
         comps = [x for x in sp if x != '']
 
+        rule_type = url_config.get('type')
+
+        if rule_type in ['feed_aggregator', 'feeds_aggregator']:
+            return await feeds_aggregate(req, config, url_config)
+
         if len(comps) == 0 and not req.url.query:
             return await input_response(req, 'Please enter a domain to visit')
         elif len(comps) == 0 and req.url.query:
@@ -350,6 +398,7 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
                     resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                         try_url,
                         config,
+                        url_config,
                         socks_proxy_url=socksp_url,
                         verify_ssl=config.verify_ssl,
                         user_agent=config.get('http_user_agent')
@@ -412,6 +461,7 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
                 resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                     req.url,
                     config,
+                    url_config,
                     socks_proxy_url=socksp_url,
                     verify_ssl=config.verify_ssl,
                     user_agent=config.get('http_user_agent')

@@ -21,7 +21,7 @@ except Exception:
 rhtml_session = None
 ctypes_html: list = ['text/html', 'application/xhtml+xml']
 user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
-scripts_re = re.compile(r'(?s)<(script).*?</\1>')
+scripts_re = re.compile(r'(?s)<(script).*?</\1>', re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ class RedirectRequired(Exception):
 
 async def fetch(url: URL,
                 config: DictConfig,
+                url_config,
                 socks_proxy_url: str = None,
                 verify_ssl: bool = True,
                 user_agent: str = None) -> tuple:
@@ -90,7 +91,10 @@ async def fetch(url: URL,
                     jsmatch = None
                     html_text = await response.text()
 
-                    if config.js_render and have_rhtml:
+                    use_jsr = (config.js_render and url_config.get(
+                        'js_render', False))
+
+                    if have_rhtml and use_jsr:
                         if rhtml_session is None:
                             # No session yet, create one
                             rhtml_session = AsyncHTMLSession()

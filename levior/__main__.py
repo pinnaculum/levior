@@ -152,6 +152,10 @@ def get_config(args) -> DictConfig:
         except Exception as err:
             raise err
 
+    rules = sorted(
+        rules, key=lambda rule: rule.config.get('priority', 1000)
+    )
+
     return config, rules
 
 

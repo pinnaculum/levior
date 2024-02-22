@@ -104,6 +104,14 @@ rules:
         Gemtext content
 ```
 
+Set *js_render* in the rule to enable JS rendering.
+
+```yaml
+rules:
+  - url: '^https?://www.requires-js.org'
+    js_render: true
+```
+
 ### Includes
 
 It is also possible to load predefined rules by using the *include* keyword
@@ -153,6 +161,25 @@ include:
       URL:
         - https://example.org
         - https://example2.org
+```
+
+### Feeds aggregator
+
+It is possible to aggregate multiple Atom/RSS web feeds into a single
+tinylog, by setting the rule type to *feeds_aggregator* and defining the
+list of feeds. Example:
+
+```yaml
+rules:
+  - url: '^gemini://localhost/francetv'
+    type: 'feeds_aggregator'
+
+    # "feeds" is a dictionary, the key must be the feed's URL, the
+    # dict value is for the feed's options
+    feeds:
+      https://www.francetvinfo.fr/titres.rss: {}
+      https://www.francetvinfo.fr/monde.rss: {}
+      https://www.francetvinfo.fr/culture.rss: {}
 ```
 
 ### Gemtext filters
