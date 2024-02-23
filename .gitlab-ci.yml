@@ -54,11 +54,11 @@ build:
     - source venv/bin/activate
     - python3 -m pip install --upgrade pip
 
-    - pip install wheel flake8
+    - pip install build wheel flake8
     - pip install '.[test]'
     - flake8 levior
 
-    - python3 setup.py sdist bdist_wheel
+    - python -m build
     - pytest -v -s tests
 
     - .gitlab/appimage-build

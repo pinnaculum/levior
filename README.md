@@ -3,7 +3,7 @@
 > *Pāpiliō levior est ave* (The butterfly is lighter than the bird)
 
 *levior* (latin word meaning *lighter*) is a web (HTTP/HTTPs) to Gemini proxy.
-It converts web pages on-the-fly to
+It converts web pages (as well as Atom/RSS feeds) on-the-fly to
 the [gemtext](https://geminiprotocol.net/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
 to suffer the heavyness associated with certain technologies of the modern web.
@@ -22,12 +22,12 @@ If you want to support this project, you can
 
 # AppImage
 
-Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage):
+Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in
+*~/.local/bin*:
 
 ```sh
-curl -L -o levior.AppImage https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
-chmod +x levior.AppImage
-./levior.AppImage
+curl -L -o ~/.local/bin/levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
+chmod +x ~/.local/bin/levior
 ```
 
 # Manual Install
