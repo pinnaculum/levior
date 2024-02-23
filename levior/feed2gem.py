@@ -77,8 +77,6 @@ def feeds2tinylog(feeds: list, sort_mode: str = 'date') -> str:
     for fe, feed in entries:
         try:
             if hasattr(fe, 'published'):
-                date = dateutil.parser.parse(fe.updated)
-                print(type(date))
                 buff.write(f'## {feed.feed.title} ({fe.published})\n')
             elif hasattr(fe, 'updated'):
                 buff.write(f'## {feed.feed.title} ({fe.updated})\n')

@@ -1,15 +1,15 @@
 #!/bin/bash
 
-if [ ! -f "python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage" ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.9/python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage
+if [ ! -f "python3.12.2-cp312-cp312-manylinux_2_28_x86_64.AppImage" ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.12/python3.12.2-cp312-cp312-manylinux_2_28_x86_64.AppImage
 fi
 
 if [ -d squashfs-root ]; then
     rm -rf squashfs-root
 fi
 
-chmod +x python*-manylinux2014_x86_64.AppImage
-./python3.9.18-cp39-cp39-manylinux2014_x86_64.AppImage --appimage-extract
+chmod +x python3.12.2-cp312-cp312-manylinux_2_28_x86_64.AppImage
+./python3.12.2-cp312-cp312-manylinux_2_28_x86_64.AppImage --appimage-extract
 
 APPDIR="$PWD/squashfs-root"
 
@@ -23,7 +23,7 @@ pushd $APPDIR
 ln -s usr/bin/levior-run AppRun
 popd
 
-rm squashfs-root/usr/share/applications/python3.9.*.desktop
+rm squashfs-root/usr/share/applications/python3.12.*.desktop
 rm squashfs-root/usr/share/metainfo/*.appdata.xml
 mkdir -p squashfs-root/usr/share/metainfo
 mkdir -p squashfs-root/usr/share/icons/hicolor/512x512/apps
@@ -36,28 +36,28 @@ cp media/img/levior.png $APPDIR/io.gitlab.levior.png
 cp media/img/levior.png $APPDIR/usr/share/icons/hicolor/512x512/apps
 
 # cleanup
-rm -rf squashfs-root/opt/python3.9/include
-rm -rf squashfs-root/opt/python3.9/bin/rst*
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/ctypes/test
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/distutils/tests
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/idlelib
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/lib2to3
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/ensurepip
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/tkinter
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/bs4/tests
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/pip
-rm -rf squashfs-root/opt/python3.9/lib/python3.9/site-packages/setuptools
+rm -rf squashfs-root/opt/python3.12/include
+rm -rf squashfs-root/opt/python3.12/bin/rst*
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/ctypes/test
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/distutils/tests
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/idlelib
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/lib2to3
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/ensurepip
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/tkinter
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/site-packages/bs4/tests
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/site-packages/pip
+rm -rf squashfs-root/opt/python3.12/lib/python3.12/site-packages/setuptools
 rm -rf squashfs-root/usr/share/tcltk
 rm -rf squashfs-root/usr/lib/libtk*
 rm -rf squashfs-root/usr/lib/libtcl*
 find squashfs-root | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
-sed -i -e 's/#\!\/.*$/#!\/opt\/python3.9\/bin\/python3.9/' \
-    squashfs-root/opt/python3.9/bin/levior
+sed -i -e 's/#\!\/.*$/#!\/opt\/python3.12\/bin\/python3.12/' \
+    squashfs-root/opt/python3.12/bin/levior
 
 find $APPDIR -type d -exec chmod -v 755 {} \;
 
-export VERSION=$(cat squashfs-root/opt/python3.9/lib/python3.9/site-packages/levior-*.dist-info/METADATA | grep "^Version:.*" | cut -d " " -f 2)
+export VERSION=$(cat squashfs-root/opt/python3.12/lib/python3.12/site-packages/levior-*.dist-info/METADATA | grep "^Version:.*" | cut -d " " -f 2)
 
 if [ ! -f "appimagetool-x86_64.AppImage" ]; then
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage

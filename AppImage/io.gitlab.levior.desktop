@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=levior
-Comment=HTTP to Gemini gateway
+Comment=Web to Gemini proxy
 Exec=levior
 Icon=io.gitlab.levior
 Terminal=true

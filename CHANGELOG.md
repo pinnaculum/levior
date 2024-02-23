@@ -1,3 +1,10 @@
+## [1.2.9] - 2024-02-23
+
+### Changed
+
+- AppImage: use python version 3.12.2 (niess/python-appimage)
+- Use importlib.resources instead of pkg_resources
+
 ## [1.2.8] - 2024-02-21
 
 ### Added

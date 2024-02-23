@@ -15,22 +15,24 @@ dynamic websites.
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
 
-# Donate
+# Supporting this project
 
 If you want to support this project, you can
-[make a donation here](https://ko-fi.com/cipres).
+make a donation [here](https://ko-fi.com/cipres) (or
+[here](https://liberapay.com/galacteek)).
 
-# AppImage
+# Installation
 
-Get the [latest AppImage here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in
-*~/.local/bin*:
+## AppImage
+
+You can get the latest AppImage [here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in *~/.local/bin*:
 
 ```sh
 curl -L -o ~/.local/bin/levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
 chmod +x ~/.local/bin/levior
 ```
 
-# Manual Install
+## Manual Install
 
 ```sh
 pip install -e .
@@ -43,7 +45,7 @@ pip install -e '.[zim]'
 pip install -e '.[uvloop]'
 ```
 
-For JS rendering, use the *js* extra:
+For Javascript rendering, install the *js* extra:
 
 ```sh
 pip install -e '.[js]'
