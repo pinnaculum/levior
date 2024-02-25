@@ -63,29 +63,53 @@ def feeds2tinylog(feeds: list, sort_mode: str = 'date') -> str:
 
     buff = io.StringIO()
 
-    def datesort(item):
-        entry, feed = item
-
+    def fentry_date(entry):
         if 'updated' in entry:
             return dateutil.parser.parse(entry['updated'])
         elif 'published' in entry:
             return dateutil.parser.parse(entry['published'])
 
     entries = [(item, feed) for feed in feeds for item in feed.entries]
-    entries.sort(key=datesort, reverse=True)
+    entries.sort(key=lambda item: fentry_date(item[0]), reverse=True)
 
-    for fe, feed in entries:
+    shown_days = []
+
+    for fe, feedo in entries:
+        ftitle = feedo.feed_config.get('title', feedo.feed.title)
+        fdate = fentry_date(fe)
+
+        if not fdate:
+            continue
+
+        fday = fdate.strftime('%d/%m/%Y')
+
+        if fday not in shown_days:
+            buff.write(f'# {fday}\n')
+            shown_days.append(fday)
+
         try:
-            if hasattr(fe, 'published'):
-                buff.write(f'## {feed.feed.title} ({fe.published})\n')
-            elif hasattr(fe, 'updated'):
-                buff.write(f'## {feed.feed.title} ({fe.updated})\n')
+            if feedo.feed_config.get('title_display_mode') == 'header':
+                if hasattr(fe, 'published'):
+                    buff.write(f'## {ftitle} ({fe.published})\n')
+                elif hasattr(fe, 'updated'):
+                    buff.write(f'## {ftitle} ({fe.updated})\n')
 
-            buff.write(f'=> {fe.link} {fe.title}\n')
+                buff.write(f'=> {fe.link}  {fe.title}\n')
+            else:
+                ed_fmt = feedo.feed_config.get('entry_date_format',
+                                               '%H:%M:%S')
 
-            for lnk in fe.links:
-                if lnk.get('href') != fe.link:
-                    buff.write(f'=> {lnk.href} {lnk.href}\n')
+                if feedo.feed_config.get('show_entry_dates', False):
+                    title = f"({ftitle}) {fe.title} ({fdate.strftime(ed_fmt)})"
+                else:
+                    title = f"({ftitle}) {fe.title}"
+
+                buff.write(f'=> {fe.link}  {title}\n')
+
+            if feedo.feed_config.get('show_entry_links', False) is True:
+                for lnk in fe.links:
+                    if lnk.get('href') != fe.link:
+                        buff.write(f'=> {lnk.href} {lnk.href}\n')
 
             buff.write('\n')
         except Exception:

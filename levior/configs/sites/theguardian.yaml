@@ -1,0 +1,38 @@
+rules:
+  - url: '^gemini://[\w\.]+/theguardian'
+    type: 'feeds_aggregator'
+
+    feeds:
+      https://www.theguardian.com/global-development/rss:
+        enabled: ${oc.select:feeds.global-development,false}
+
+      https://www.theguardian.com/world/rss:
+        enabled: ${oc.select:feeds.world,true}
+
+      https://www.theguardian.com/world/africa/rss:
+        enabled: ${oc.select:feeds.world-africa,false}
+
+      https://www.theguardian.com/world/europe-news/rss:
+        enabled: ${oc.select:feeds.world-europe,true}
+
+      https://www.theguardian.com/world/middleeast/rss:
+        enabled: ${oc.select:feeds.world-middleeast,false}
+
+      https://www.theguardian.com/uk-news/rss:
+        enabled: ${oc.select:feeds.uk-news,true}
+
+      https://www.theguardian.com/uk-technology/rss:
+        enabled: ${oc.select:feeds.uk-technology,false}
+
+      https://www.theguardian.com/us-news/rss:
+        enabled: ${oc.select:feeds.us-news,true}
+
+  - url: '^https?://[\w.-]*theguardian.com'
+    gemtext_filters:
+      - filter: levior.filters:only_linetypes
+        types:
+          - heading1
+          - regular
+          - quote
+
+      - levior.filters:sub_bracketed_digits

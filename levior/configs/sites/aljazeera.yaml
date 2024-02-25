@@ -1,0 +1,7 @@
+rules:
+  - url: '^gemini://[\w\.]+/aljazeera'
+    type: 'feeds_aggregator'
+
+    feeds:
+      https://www.aljazeera.com/xml/rss/all.xml:
+        enabled: ${oc.select:feeds.all,true}

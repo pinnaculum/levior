@@ -203,16 +203,19 @@ async def feeds_aggregate(req: Request,
     sort_mode = url_config.get('sort_mode', 'date')
 
     for feed_url, feed_config in feeds_config.items():
+        # Skip this feed if it's disabled
+        if feed_config.get('enabled', True) is False:
+            continue
+
         try:
             resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
                 URL(feed_url),
                 config,
                 url_config,
                 verify_ssl=config.verify_ssl,
+                allow_redirects=True,  # Let aiohttp handle redirects
                 user_agent=config.get('http_user_agent')
             )
-        except crawler.RedirectRequired:
-            continue
         except Exception:
             traceback.print_exc()
             continue
@@ -224,6 +227,8 @@ async def feeds_aggregate(req: Request,
             )
 
             if feed:
+                feed.feed_config = feed_config
+
                 feeds.append(feed)
 
     gemtext = feed2gem.feeds2tinylog(feeds, sort_mode=sort_mode)

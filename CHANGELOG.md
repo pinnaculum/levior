@@ -1,7 +1,13 @@
 ## [1.2.9] - 2024-02-23
 
+### Added
+
+- Make it possible to enable or disable certain feeds when sourcing
+  a config file containing "feeds aggregator" rules
+
 ### Changed
 
+- Feeds aggregator: simplify the tinylog output
 - AppImage: use python version 3.12.2 (niess/python-appimage)
 - Use importlib.resources instead of pkg_resources
 

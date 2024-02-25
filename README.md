@@ -181,7 +181,19 @@ rules:
     feeds:
       https://www.francetvinfo.fr/titres.rss: {}
       https://www.francetvinfo.fr/monde.rss: {}
-      https://www.francetvinfo.fr/culture.rss: {}
+      https://www.francetvinfo.fr/culture.rss:
+        enabled: false
+```
+
+When you are sourcing a config file that includes aggregation rules,
+you can enable or disable certain feeds using the parameters:
+
+```yaml
+  - src: levior:sites/francetvinfo
+    with:
+      feeds:
+        culture: true
+        sports: true
 ```
 
 ### Gemtext filters

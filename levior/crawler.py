@@ -34,6 +34,7 @@ async def fetch(url: URL,
                 url_config,
                 socks_proxy_url: str = None,
                 verify_ssl: bool = True,
+                allow_redirects: bool = False,
                 user_agent: str = None) -> tuple:
     """
     :param URL url: The requested URL
@@ -69,7 +70,7 @@ async def fetch(url: URL,
     async with aiohttp.ClientSession(connector=connector) as session:
         try:
             async with session.get(url, headers=headers,
-                                   allow_redirects=False,
+                                   allow_redirects=allow_redirects,
                                    verify_ssl=verify_ssl) as response:
                 location = response.headers.get('Location')
 

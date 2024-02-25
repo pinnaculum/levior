@@ -3,6 +3,14 @@ import re
 from ._helpers import is_text
 
 
+def sub_bracketed_digits(fctx) -> bool:
+    fctx.line.text = re.sub(
+        r'(\[\d+\])', fctx.params.get('replace', ''),
+        fctx.line.text
+    )
+    return fctx.line
+
+
 def rm_bracketed_digits(fctx) -> bool:
     """
     Remove any annoying lines that ends with digits

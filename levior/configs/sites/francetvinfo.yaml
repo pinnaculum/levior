@@ -4,18 +4,40 @@
 #
 
 rules:
-  # Aggregate some of the main francetvinfo RSS feeds into one gemlog,
+  # Aggregate some of the main francetvinfo RSS feeds into one tinylog,
   # accessible from a unique gemini URL
-  - url: '^gemini://localhost/ftvinfo'
+
+  - url: '^gemini://[\w\.]+/ftvinfo'
     type: 'feeds_aggregator'
 
     feeds:
-      https://www.francetvinfo.fr/titres.rss: {}
-      https://www.francetvinfo.fr/monde.rss: {}
-      https://www.francetvinfo.fr/culture.rss: {}
-      https://www.francetvinfo.fr/decouverte.rss: {}
-      https://www.francetvinfo.fr/sports.rss: {}
-      https://www.francetvinfo.fr/france.rss: {}
+      https://www.francetvinfo.fr/politique.rss:
+        enabled: ${oc.select:feeds.politique,false}
+
+      https://www.francetvinfo.fr/societe.rss:
+        enabled: ${oc.select:feeds.societe,false}
+
+      https://www.francetvinfo.fr/faits-divers.rss:
+        enabled: ${oc.select:feeds.faits-divers,false}
+
+      https://www.francetvinfo.fr/titres.rss:
+        show_entry_dates: true
+        enabled: ${oc.select:feeds.titres,true}
+
+      https://www.francetvinfo.fr/monde.rss:
+        enabled: ${oc.select:feeds.monde,true}
+
+      https://www.francetvinfo.fr/culture.rss:
+        enabled: ${oc.select:feeds.culture,true}
+
+      https://www.francetvinfo.fr/decouverte.rss:
+        enabled: ${oc.select:feeds.decouverte,false}
+
+      https://www.francetvinfo.fr/sports.rss:
+        enabled: ${oc.select:feeds.sports,false}
+
+      https://www.francetvinfo.fr/france.rss:
+        enabled: ${oc.select:feeds.france,true}
 
   - url: '^https?://[\\w.-]*francetvinfo.fr'
     gemtext_filters:
