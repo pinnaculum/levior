@@ -3,6 +3,7 @@ import sys
 import traceback
 from yarl import URL
 from pathlib import Path
+from typing import Union
 
 from aiogemini import Status
 from aiogemini.server import _RequestHandler, Request, Response
@@ -31,14 +32,37 @@ from .response import redirect_response
 from .response import proxy_reqrefused_response
 
 
+def cache_key_for_url(url: URL) -> str:
+    """
+    Return the diskcache key for this URL, stripped of its optional
+    fragment and user auth/password attributes.
+    """
+    return str(url.with_fragment(None).with_user(None).with_password(None))
+
+
 def cache_resource(cache: diskcache.Cache,
                    url: URL, ctype: str, data,
-                   ttl: float = 60.0 * 10):
+                   ttl: Union[int, float] = None) -> bool:
+    """
+    Cache the content associated with a URL
+    """
     try:
-        cache.add(str(url), (ctype, data, None), expire=ttl, retry=True)
+        lifetime = None
+
+        if isinstance(ttl, (int, float)):
+            if ttl >= 0:
+                lifetime = int(ttl)
+            elif ttl < 0:
+                # Negative ttl = never lifetime
+                lifetime = None
+
+        cache.set(cache_key_for_url(url),
+                  (ctype, data, None),
+                  expire=lifetime, retry=True)
+
         return True
-    except Exception as err:
-        print(err, file=sys.stderr)
+    except Exception:
+        traceback.print_exc()
         return False
 
 
@@ -47,7 +71,7 @@ def get_url_config(config: DictConfig,
                    url: URL) -> dict:
     url_config = {
         'cache': False,
-        'ttl': 0
+        'ttl': config.cache_ttl_default
     }
 
     for rule in rules:
@@ -87,7 +111,7 @@ async def build_response(req: Request,
     :param cache: Disk cache
     :param str rsc_ctype: Resource content type
     :param bytes data: Resource data as bytes
-    :param bool cached: Cached status in disl cache for this URL
+    :param bool cached: Cached status in disk cache for this URL
     """
 
     fdoc: GmiDocument = None
@@ -96,11 +120,14 @@ async def build_response(req: Request,
 
     url_cache: bool = cache and not cached and url_config.get('cache')
     links_mode: str = url_config.get('links_mode', config.links_mode)
+    cache_ttl = None
 
     try:
-        cache_ttl = float(url_config.get('ttl', config.cache_ttl_default))
+        cache_ttl = int(url_config.get('ttl', config.cache_ttl_default))
+    except (TypeError, ValueError):
+        cache_ttl = config.cache_ttl_default
     except BaseException:
-        cache_ttl = 60 * 10
+        traceback.print_exc()
 
     gemtext_filters = url_config.get('gemtext_filters', [])
 
@@ -176,14 +203,14 @@ async def build_response(req: Request,
 
         if not req.url.query and url_cache:
             # Only cache documents with no query
-            cache_resource(url_cache, req.url, rsc_ctype, data,
+            cache_resource(cache, req.url, rsc_ctype, data,
                            ttl=cache_ttl)
 
         return await data_response(req, gemtext.encode(), 'text/gemini')
     else:
         if data:
             if not cached and url_cache:
-                cache_resource(url_cache, req.url, rsc_ctype, data,
+                cache_resource(cache, req.url, rsc_ctype, data,
                                ttl=cache_ttl)
 
             return await data_response(req, data, rsc_ctype)
@@ -193,9 +220,9 @@ async def build_response(req: Request,
 
 async def feeds_aggregate(req: Request,
                           config: DictConfig,
+                          cache: diskcache.Cache,
                           url_config: dict,
                           gemini_server_host: str = None) -> Response:
-    loop = asyncio.get_event_loop()
     gemtext: str = None
     feeds: list = []
 
@@ -207,35 +234,66 @@ async def feeds_aggregate(req: Request,
         if feed_config.get('enabled', True) is False:
             continue
 
+        feed = None
+
+        # Feed cache expire (in seconds)
+        cache_expire_time: int = feed_config.get('expire_time',
+                                                 3600 * 24 * 3)
+
+        # Cache vars
+        cache_key = f'feedc_{feed_url}'
+        cached_etag, cached_lastm = None, None
+        cached = cache.get(cache_key)
+
         try:
-            resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
+            if cached:
+                cached_etag = cached.get('etag')
+                cached_lastm = cached.get('last-modified')
+
+            resp, data, feed, etag, lastm = await feed2gem.feed_fromurl(
                 URL(feed_url),
-                config,
-                url_config,
-                verify_ssl=config.verify_ssl,
-                allow_redirects=True,  # Let aiohttp handle redirects
-                user_agent=config.get('http_user_agent')
-            )
-        except Exception:
-            traceback.print_exc()
-            continue
-        else:
-            feed = await loop.run_in_executor(
-                None,
-                feed2gem.feed_fromdata,
-                data.decode()
+                etag=cached_etag,
+                last_modified=cached_lastm,
+                timeout=feed_config.get('req_timeout', 10),
+                socks_proxy_url=config.socks5_proxy
             )
 
-            if feed:
+            if feed and feed['entries']:
+                # TODO: check that the feed can be serialized before caching it
+
+                cache.set(cache_key, {
+                    'etag': etag,
+                    'last-modified': lastm,
+                    'feed': feed
+                }, expire=cache_expire_time)
+
                 feed.feed_config = feed_config
+                feeds.append(feed)
+        except (feed2gem.FeedNotModified,
+                asyncio.CancelledError,
+                asyncio.TimeoutError):
+            """
+            Not modified, or timeout.
+            If the feed had been cached, serve that.
+            """
 
+            if cached and 'feed' in cached:
+                feed = cached['feed']
+                feed.feed_config = feed_config
                 feeds.append(feed)
 
-    gemtext = feed2gem.feeds2tinylog(feeds, sort_mode=sort_mode)
+            continue
+        except BaseException:
+            traceback.print_exc()
 
-    if gemtext:
+    try:
+        assert len(feeds) > 0
+
+        gemtext = feed2gem.feeds2tinylog(feeds, sort_mode=sort_mode)
         return await data_response(req, gemtext.encode(), 'text/gemini')
-    else:
+    except AssertionError:
+        return await error_response(req, 'No valid feeds were found')
+    except BaseException:
         return await error_response(req, 'Failed to aggregate feeds')
 
 
@@ -281,7 +339,9 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
-def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
+def create_levior_handler(config: DictConfig,
+                          cache: diskcache.Cache,
+                          rules) -> _RequestHandler:
     try:
         if config.get('tor') is True:
             socksp_url = 'socks5://localhost:9050'
@@ -289,11 +349,6 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
             socksp_url = config.socks5_proxy
     except Exception:
         socksp_url = None
-
-    if config.cache_enable:
-        cache = diskcache.Cache(config.get('cache_path', '/tmp/levior'))
-    else:
-        cache = None
 
     mountpoints = {}
 
@@ -339,7 +394,7 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
         rule_type = url_config.get('type')
 
         if rule_type in ['feed_aggregator', 'feeds_aggregator']:
-            return await feeds_aggregate(req, config, url_config)
+            return await feeds_aggregate(req, config, cache, url_config)
 
         if len(comps) == 0 and not req.url.query:
             return await input_response(req, 'Please enter a domain to visit')
@@ -390,7 +445,7 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
         url_http = url.with_scheme('http')
 
         resp, rsc_ctype, rsc_clength, data = None, None, None, None
-        cached = cache.get(str(url)) if cache else None
+        cached = cache.get(cache_key_for_url(url)) if cache else None
 
         if cached:
             rsc_ctype, data, _ = cached
@@ -458,7 +513,7 @@ def create_levior_handler(config: DictConfig, rules) -> _RequestHandler:
         if cresp:
             return await send_custom_reply(req, cresp)
 
-        cached = cache.get(str(req.url)) if cache else None
+        cached = cache.get(cache_key_for_url(req.url)) if cache else None
         if cached:
             rsc_ctype, data, _ = cached
         else:

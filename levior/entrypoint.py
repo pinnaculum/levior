@@ -65,22 +65,39 @@ def parse_args(args: list = None):
         '--cache-path',
         dest='cache_path',
         type=str,
-        default='/tmp/levior',
+        default=None,
         help='Cache path')
 
     parser.add_argument(
         '--cache-ttl',
-        dest='cache_ttl_secs',
+        '--default-cache-ttl',
+        dest='cache_ttl_default',
         type=int,
-        default=60 * 10,
-        help='Default cache Time-to-Live in seconds')
+        default=60 * 60 * 24,
+        help='Default cache items expiration lifetime (in seconds)')
+
+    parser.add_argument(
+        '--cache-size-limit',
+        dest='cache_size_limit',
+        type=int,
+        default=2048,  # 2Gb
+        help='Maximum cache size (in megabytes)')
+
+    parser.add_argument(
+        '--cache-eviction-policy',
+        dest='cache_eviction_policy',
+        type=str,
+        default='least-recently-stored',
+        help='Cache items eviction policy '
+        '(least-recently-stored, least-recently-used, '
+        'least-frequently-used, none)')
 
     parser.add_argument(
         '--cache-enable',
         dest='cache_enable',
         action='store_true',
-        default=False,
-        help='Enable or disable cache')
+        default=True,
+        help='Enable or disable the cache system (deprecated, always enabled)')
 
     parser.add_argument(
         '--https-only',

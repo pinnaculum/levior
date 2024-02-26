@@ -13,10 +13,12 @@ def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
 
 
 async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
+                        reason: str = None,
                         status=Status.SUCCESS) -> Response:
     response = Response()
     response.content_type = content_type
     response.status = status
+    response.reason = reason
     response.start(req)
     await response.write(data)
     await response.write_eof()
@@ -42,12 +44,14 @@ async def redirect_response(req, url: URL) -> Response:
     return response
 
 
-async def error_response(req, message: str,
+async def error_response(req,
+                         reason: str,
                          status=Status.TEMPORARY_FAILURE,
+                         message: str = '',
                          content_type=GEMINI_MEDIA_TYPE) -> Response:
-    return await data_response(req,
-                               message.encode(),
-                               status=status)
+    return await data_response(req, message.encode(),
+                               status=status,
+                               reason=reason)
 
 
 async def proxy_reqrefused_response(req, message: str) -> Response:

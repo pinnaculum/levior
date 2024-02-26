@@ -25,6 +25,7 @@ dependencies = [
     "aiogemini @ git+https://github.com/keis/aiogemini.git@master",
     "aiohttp>=3.8.1",
     "aiohttp-socks>=0.6.0",
+    "appdirs==1.4.4",
     "daemonize==2.5.0",
     "diskcache>=5.4.0",
     "feedparser>=6.0.10",

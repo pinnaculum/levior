@@ -1,8 +1,17 @@
+import aiohttp
+from aiohttp.web_exceptions import HTTPNotModified
+from aiohttp_socks import ProxyConnector
+
+from yarl import URL
 import feedparser
 import traceback
 import io
 
 import dateutil.parser
+
+
+class FeedNotModified(Exception):
+    pass
 
 
 def feed_fromdata(data: str):
@@ -11,6 +20,43 @@ def feed_fromdata(data: str):
     except Exception:
         traceback.print_exc()
         return None
+
+
+async def feed_fromurl(url: URL,
+                       etag: str = None,
+                       last_modified: str = None,
+                       socks_proxy_url: str = None,
+                       timeout: int = 10,
+                       verify_ssl: bool = True) -> tuple:
+    headers: dict = {}
+
+    if socks_proxy_url:
+        connector = ProxyConnector.from_url(socks_proxy_url)
+    else:
+        connector = None
+
+    if isinstance(etag, str):
+        headers["ETag"] = etag
+
+    if isinstance(last_modified, str):
+        headers["If-Modified-Since"] = last_modified
+
+    async with aiohttp.ClientSession(connector=connector) as session:
+        async with session.get(url,
+                               headers=headers,
+                               allow_redirects=True,
+                               timeout=timeout,
+                               verify_ssl=verify_ssl) as response:
+            if response.status == HTTPNotModified.status_code:
+                raise FeedNotModified(f'{url}: Feed has not been modified')
+
+            data = await response.text()
+            feed = feedparser.parse(data)
+
+            etag = response.headers.get("ETag")
+            lastm = response.headers.get('Last-Modified')
+
+            return response, data, feed, etag, lastm
 
 
 def feed2tinylog(data: str) -> str:

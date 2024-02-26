@@ -1,7 +1,8 @@
 from importlib import resources
 
 
-__version__ = '1.2.9'
+__appname__ = 'levior'
+__version__ = '1.3.0'
 
 
 def default_cert_paths() -> tuple:

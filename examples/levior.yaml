@@ -19,9 +19,16 @@ port: 1965
 # js_render_always: true
 
 # Cache settings
-cache_enable: true
-cache_path: /tmp/levior
-cache_ttl_default: 600
+#
+# cache_path: /tmp/levior
+#
+# Cache items eviction policy
+# https://grantjenks.com/docs/diskcache/tutorial.html#eviction-policies
+#
+# cache_eviction_policy: "least-recently-used"
+#
+# TTL (cache items expire time, in seconds)
+# cache_ttl_default: 600
 
 verify_ssl: true
 

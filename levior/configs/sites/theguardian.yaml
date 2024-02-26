@@ -3,20 +3,38 @@ rules:
     type: 'feeds_aggregator'
 
     feeds:
+      https://www.theguardian.com/business/economics/rss:
+        enabled: ${oc.select:feeds.business.economics,false}
+
+      https://www.theguardian.com/environment/energy/rss:
+        enabled: ${oc.select:feeds.environment.energy,false}
+
+      https://www.theguardian.com/environment/pollution/rss:
+        enabled: ${oc.select:feeds.environment.pollution,false}
+
       https://www.theguardian.com/global-development/rss:
         enabled: ${oc.select:feeds.global-development,false}
+
+      https://www.theguardian.com/science/rss:
+        enabled: ${oc.select:feeds.science,false}
 
       https://www.theguardian.com/world/rss:
         enabled: ${oc.select:feeds.world,true}
 
+      https://www.theguardian.com/world/americas/rss:
+        enabled: ${oc.select:feeds.world.americas,false}
+
       https://www.theguardian.com/world/africa/rss:
-        enabled: ${oc.select:feeds.world-africa,false}
+        enabled: ${oc.select:feeds.world.africa,false}
+
+      https://www.theguardian.com/world/asia/rss:
+        enabled: ${oc.select:feeds.world.asia,false}
 
       https://www.theguardian.com/world/europe-news/rss:
-        enabled: ${oc.select:feeds.world-europe,true}
+        enabled: ${oc.select:feeds.world.europe-news,true}
 
       https://www.theguardian.com/world/middleeast/rss:
-        enabled: ${oc.select:feeds.world-middleeast,false}
+        enabled: ${oc.select:feeds.world.middleeast,false}
 
       https://www.theguardian.com/uk-news/rss:
         enabled: ${oc.select:feeds.uk-news,true}

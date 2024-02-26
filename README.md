@@ -114,6 +114,24 @@ rules:
     js_render: true
 ```
 
+### Caching
+
+The raw content of the web resources fetched by the proxy can be cached.
+The result of the *geminification* of the pages (the gemtext document)
+is never cached.
+
+Set the *cache* attribute in your rule to cache the data. The *ttl*
+(time-to-live) attribute determines the expiration lifetime for the
+resource's content in the cache. The data will be served from the cache
+until the ttl expires (subsequent requests will trigger a refetch).
+
+```yaml
+rules:
+  - url: '^https?://www.thingstokeep.org'
+    cache: true
+    ttl: 86400
+```
+
 ### Includes
 
 It is also possible to load predefined rules by using the *include* keyword

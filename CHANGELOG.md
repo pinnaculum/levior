@@ -1,3 +1,10 @@
+## [1.3.0] - 2024-02-26
+
+### Added
+
+- Caching of web feeds (using etag and last-modified headers)
+- New settings for the diskcache: eviction policy, size limit
+
 ## [1.2.9] - 2024-02-23
 
 ### Added
