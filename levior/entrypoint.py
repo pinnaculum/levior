@@ -5,6 +5,7 @@ import traceback
 import signal
 from asyncio import tasks
 
+import logging
 from daemonize import Daemonize
 
 from levior import crawler
@@ -46,6 +47,14 @@ def parse_args(args: list = None):
         type=str,
         default='levior.pid',
         help='Daemon process id (PID) file path')
+
+    parser.add_argument(
+        '--log-file',
+        '--access-log',
+        dest='log_file_path',
+        type=str,
+        default=None,
+        help='Access log file path')
 
     parser.add_argument(
         '--host',
@@ -219,12 +228,31 @@ def run():
         print(__version__)
         sys.exit(0)
 
+    log_formatter = logging.Formatter('%(message)s')
+
+    logger = logging.getLogger()
+    logger.setLevel('DEBUG')
+
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
         loop.add_signal_handler(sig, lambda sig=sig:
                                 asyncio.create_task(stop_process(sig, loop)))
 
     try:
         config, server = levior_configure_server(args)
+
+        if config.daemonize or config.log_file_path:
+            file_handler = logging.FileHandler(
+                config.log_file_path if
+                config.log_file_path else 'levior-log.gmi',
+                'w'
+            )
+            file_handler.setFormatter(log_formatter)
+            file_handler.setLevel(logging.DEBUG)
+            logger.addHandler(file_handler)
+        else:
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(log_formatter)
+            logger.addHandler(stream_handler)
 
         if have_pyppeteer and config.js_render:
             # If pyppeteer is installed and the user wants to
@@ -242,10 +270,13 @@ def run():
                 pid=config.pid_file_path,
                 action=daemon_run,
                 verbose=True,
+                logger=logger,
+                keep_fds=[file_handler.stream.fileno()],
                 auto_close_fds=False
             )
             srvd.start()
         else:
+
             daemon_run()
     except KeyboardInterrupt:
         pass

@@ -4,6 +4,7 @@
 
 - Caching of web feeds (using etag and last-modified headers)
 - New settings for the diskcache: eviction policy, size limit
+- Logging of requests as an access log in the gemtext format
 
 ## [1.2.9] - 2024-02-23
 

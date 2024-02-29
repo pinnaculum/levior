@@ -76,6 +76,16 @@ levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
 
+## Logging
+
+Requests are logged as gemtext links. Use **--log-file** if you want the
+access log to be written to a file.
+
+- If you are not running *levior* as a daemon, and you don't specify an access
+  log file path, requests are logged to the console
+- If you are running *levior* as a daemon, requests are logged to the specified
+  log file (or the default: *levior-log.gmi*)
+
 ## Daemonization
 
 Use **--daemon** or **-d** to run levior as a daemon.

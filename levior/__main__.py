@@ -127,6 +127,7 @@ def get_config(args) -> DictConfig:
         'mode': args.service_modes,
         'hostname': args.hostname,
         'port': args.port,
+        'log_file_path': args.log_file_path,
         'cache_path': args.cache_path,
         'cache_enable': args.cache_enable,
         'cache_ttl_default': args.cache_ttl_default,

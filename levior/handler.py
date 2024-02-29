@@ -1,9 +1,11 @@
 import asyncio
+import logging
 import sys
 import traceback
 from yarl import URL
 from pathlib import Path
 from typing import Union
+from datetime import datetime
 
 from aiogemini import Status
 from aiogemini.server import _RequestHandler, Request, Response
@@ -30,6 +32,9 @@ from .response import error_response
 from .response import input_response
 from .response import redirect_response
 from .response import proxy_reqrefused_response
+
+
+logger = logging.getLogger()
 
 
 def cache_key_for_url(url: URL) -> str:
@@ -339,6 +344,20 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
+def log_request(req: Request, reqd: datetime,
+                resp: Response, url_config) -> None:
+    """
+    Log a request's URL and response status as a gemtext link.
+    """
+
+    rdt: str = reqd.strftime("%Y-%m-%d %H:%M:%S")
+
+    logger.info(
+        f'=> {req.url}  {req.url} '
+        f'({rdt}, {resp.status.value}, {resp.content_type})'
+    )
+
+
 def create_levior_handler(config: DictConfig,
                           cache: diskcache.Cache,
                           rules) -> _RequestHandler:
@@ -376,6 +395,8 @@ def create_levior_handler(config: DictConfig,
         :rtype: Response
         """
 
+        reqd = datetime.now()
+
         if req.url.scheme != 'gemini':
             return await error_response(
                 req,
@@ -384,6 +405,7 @@ def create_levior_handler(config: DictConfig,
             )
 
         url_config = get_url_config(config, rules, req.url)
+
         cresp = get_custom_reply(url_config)
         if cresp:
             return await send_custom_reply(req, cresp)
@@ -394,7 +416,9 @@ def create_levior_handler(config: DictConfig,
         rule_type = url_config.get('type')
 
         if rule_type in ['feed_aggregator', 'feeds_aggregator']:
-            return await feeds_aggregate(req, config, cache, url_config)
+            resp = await feeds_aggregate(req, config, cache, url_config)
+            log_request(req, reqd, resp, url_config)
+            return resp
 
         if len(comps) == 0 and not req.url.query:
             return await input_response(req, 'Please enter a domain to visit')
@@ -482,7 +506,7 @@ def create_levior_handler(config: DictConfig,
             if not resp or not rsc_ctype or resp.status != 200:
                 return await http_crawler_error_response(req, resp.status)
 
-        return await build_response(
+        resp = await build_response(
             req,
             config,
             url_config,
@@ -495,6 +519,10 @@ def create_levior_handler(config: DictConfig,
             req_path=path
         )
 
+        log_request(req, reqd, resp, url_config)
+
+        return resp
+
     async def handle_request_proxy_mode(req: Request) -> Response:
         """
         Handler for serving in http proxy mode
@@ -502,6 +530,8 @@ def create_levior_handler(config: DictConfig,
         :param Request req: The incoming gemini request
         :rtype: Response
         """
+
+        reqd = datetime.utcnow()
 
         if req.url.scheme not in ['http', 'https', 'ipfs', 'ipns']:
             return await error_response(
@@ -535,7 +565,7 @@ def create_levior_handler(config: DictConfig,
             if not resp or not rsc_ctype or resp.status != 200:
                 return await http_crawler_error_response(req, resp.status)
 
-        return await build_response(
+        resp = await build_response(
             req,
             config,
             url_config,
@@ -546,6 +576,10 @@ def create_levior_handler(config: DictConfig,
             cached=cached,
             proxy_mode=True
         )
+
+        log_request(req, reqd, resp, url_config)
+
+        return resp
 
     async def handle_request(req: Request) -> Response:
         modes = config.get('mode', 'proxy,server').split(',')

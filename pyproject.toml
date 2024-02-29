@@ -22,7 +22,7 @@ classifiers = [
 ]
 urls = {Homepage = "https://gitlab.com/cipres/levior"}
 dependencies = [
-    "aiogemini @ git+https://github.com/keis/aiogemini.git@master",
+    "aiogemini @ git+https://gitlab.com/cipres/aiogemini.git@master",
     "aiohttp>=3.8.1",
     "aiohttp-socks>=0.6.0",
     "appdirs==1.4.4",
