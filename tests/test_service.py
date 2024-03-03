@@ -320,7 +320,6 @@ class TestLeviorModes:
 
         resp, data = await client.proxy_request(resp.reason)
         assert resp.status == Status.SUCCESS
-        # data = (await resp.read()).decode()
         assert resp.content_type.startswith('text/gemini')
         assert data.decode().splitlines()[0].startswith('Welcome to AIOHTTP')
 

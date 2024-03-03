@@ -1,10 +1,18 @@
+## [1.3.1] - 2024-03-03
+
+### Added
+
+- Logging of requests as an access log in the gemtext format
+- Access log server endpoint
+- Feeds aggregator: make it possible to only show entries from a specific
+  feed by passing its index in the URL query
+
 ## [1.3.0] - 2024-02-26
 
 ### Added
 
 - Caching of web feeds (using etag and last-modified headers)
 - New settings for the diskcache: eviction policy, size limit
-- Logging of requests as an access log in the gemtext format
 
 ## [1.2.9] - 2024-02-23
 

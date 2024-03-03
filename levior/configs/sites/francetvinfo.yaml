@@ -61,3 +61,5 @@ rules:
           - '^participer'
           - "Suivez l'actu"
           - '^tout lire'
+          - 'Nos lives en cours'
+          - '^Direct'

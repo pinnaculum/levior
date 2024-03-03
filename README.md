@@ -78,6 +78,8 @@ levior --tor
 
 ## Logging
 
+### Access log
+
 Requests are logged as gemtext links. Use **--log-file** if you want the
 access log to be written to a file.
 
@@ -85,6 +87,16 @@ access log to be written to a file.
   log file path, requests are logged to the console
 - If you are running *levior* as a daemon, requests are logged to the specified
   log file (or the default: *levior-log.gmi*)
+
+### Access log server endpoint
+
+Set *access_log_endpoint* to *true* in your config file to enable the access
+log endpoint **/access_log** on the server. This endpoint shows the
+proxy's access log in the gemtext format.
+
+```yaml
+access_log_endpoint: true
+```
 
 ## Daemonization
 
@@ -398,6 +410,10 @@ Gemini browser. Examples:
 gemini://localhost/searx.be
 gemini://localhost/gitlab.com/cipres/levior
 ```
+
+### /access_log
+
+Shows the proxy's access log.
 
 ### /search
 

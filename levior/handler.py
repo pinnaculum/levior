@@ -1,10 +1,11 @@
 import asyncio
 import logging
+import re
 import sys
 import traceback
 from yarl import URL
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple
 from datetime import datetime
 
 from aiogemini import Status
@@ -96,6 +97,13 @@ async def markdownification_error(req, url):
     )
 
 
+def gemtext_title_extract(gemtext: str) -> str:
+    for line in gemtext.splitlines():
+        ma = re.match(r'^#\s(.*)$', line)
+        if ma:
+            return ma.group(1)
+
+
 async def build_response(req: Request,
                          config: DictConfig,
                          url_config: dict,
@@ -106,7 +114,7 @@ async def build_response(req: Request,
                          gemini_server_host: str = None,
                          cached: bool = False,
                          proxy_mode: bool = False,
-                         req_path: str = None) -> Response:
+                         req_path: str = None) -> Tuple[Response, str]:
     """
     Build a gemini response for a request made on a levior instance
 
@@ -122,6 +130,7 @@ async def build_response(req: Request,
     fdoc: GmiDocument = None
     loop = asyncio.get_event_loop()
     gemtext: str = None
+    doc_title: str = None
 
     url_cache: bool = cache and not cached and url_config.get('cache')
     links_mode: str = url_config.get('links_mode', config.links_mode)
@@ -150,9 +159,10 @@ async def build_response(req: Request,
         )
 
         if tinyl:
-            return await data_response(req, tinyl.encode(), 'text/gemini')
+            return (await data_response(req, tinyl.encode(), 'text/gemini'),
+                    None)
         else:
-            return await data_response(req, data, rsc_ctype)
+            return (await data_response(req, data, rsc_ctype), None)
     elif rsc_ctype in crawler.ctypes_html:
         # HTML => Markdown => gemtext
 
@@ -174,7 +184,7 @@ async def build_response(req: Request,
         md = conv.convert(data)
 
         if not md:
-            return await markdownification_error(req, req.url)
+            return (await markdownification_error(req, req.url), None)
 
         gemtext = md2gemini(
             md,
@@ -185,10 +195,12 @@ async def build_response(req: Request,
         )
 
         if not gemtext:
-            return await error_response(
+            return (await error_response(
                 req,
                 f'Geminification of {req.url} resulted in an empty document'
-            )
+            ), None)
+
+        doc_title = gemtext_title_extract(gemtext)
 
         if gemtext_filters:
             # Construct a GmiDocument with what we received
@@ -211,16 +223,18 @@ async def build_response(req: Request,
             cache_resource(cache, req.url, rsc_ctype, data,
                            ttl=cache_ttl)
 
-        return await data_response(req, gemtext.encode(), 'text/gemini')
+        return (await data_response(req, gemtext.encode(), 'text/gemini'),
+                doc_title)
     else:
         if data:
             if not cached and url_cache:
                 cache_resource(cache, req.url, rsc_ctype, data,
                                ttl=cache_ttl)
 
-            return await data_response(req, data, rsc_ctype)
+            return (await data_response(req, data, rsc_ctype),
+                    doc_title)
         else:
-            return await error_response(req, 'Empty page')
+            return (await error_response(req, 'Empty page'), None)
 
 
 async def feeds_aggregate(req: Request,
@@ -228,13 +242,26 @@ async def feeds_aggregate(req: Request,
                           cache: diskcache.Cache,
                           url_config: dict,
                           gemini_server_host: str = None) -> Response:
+    feed_only_idx: int
     gemtext: str = None
     feeds: list = []
 
     feeds_config = url_config.get('feeds')
     sort_mode = url_config.get('sort_mode', 'date')
 
-    for feed_url, feed_config in feeds_config.items():
+    try:
+        # If an integer is passed in the query, only the feed
+        # corresponding to this index will be shown
+        feed_only_idx: int = int(list(req.url.query.keys()).pop(0)) if \
+            req.url.query else -1
+    except (ValueError, TypeError):
+        feed_only_idx = -1
+
+    for feed_idx, (feed_url, feed_config) in enumerate(feeds_config.items()):
+        # Skip this feed if it doesn't match the requested feed index
+        if feed_only_idx >= 0 and feed_idx != feed_only_idx:
+            continue
+
         # Skip this feed if it's disabled
         if feed_config.get('enabled', True) is False:
             continue
@@ -344,23 +371,44 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
-def log_request(req: Request, reqd: datetime,
-                resp: Response, url_config) -> None:
+def log_request(access_log: GmiDocument,
+                req: Request, reqd: datetime,
+                resp: Response, url_config,
+                title: str = None) -> None:
     """
     Log a request's URL and response status as a gemtext link.
     """
 
-    rdt: str = reqd.strftime("%Y-%m-%d %H:%M:%S")
+    peer: tuple = None
+    rdt: str = reqd.strftime("%d/%b/%Y %H:%M:%S")
 
-    logger.info(
-        f'=> {req.url}  {req.url} '
-        f'({rdt}, {resp.status.value}, {resp.content_type})'
-    )
+    try:
+        peer = req.transport.get_extra_info('peername')
+    except BaseException:
+        pass
+
+    client_ip = peer[0] if peer else 'Unknown'
+
+    gemline: str = f'=> {req.url}  [{rdt}] '
+    if title:
+        gemline += title
+    else:
+        gemline += str(req.url)
+
+    gemline += f'({client_ip}, status: {resp.status.value}, '
+    gemline += f'ctype: {resp.content_type})'
+
+    access_log.append(gemline)
+
+    logger.info(gemline)
 
 
 def create_levior_handler(config: DictConfig,
                           cache: diskcache.Cache,
                           rules) -> _RequestHandler:
+    mountpoints: dict = {}
+    access_log_doc: GmiDocument = GmiDocument()
+
     try:
         if config.get('tor') is True:
             socksp_url = 'socks5://localhost:9050'
@@ -368,8 +416,6 @@ def create_levior_handler(config: DictConfig,
             socksp_url = config.socks5_proxy
     except Exception:
         socksp_url = None
-
-    mountpoints = {}
 
     for mpath, mcfg in config.get('mount', {}).items():
         _type = mcfg.pop('type', None)
@@ -417,7 +463,7 @@ def create_levior_handler(config: DictConfig,
 
         if rule_type in ['feed_aggregator', 'feeds_aggregator']:
             resp = await feeds_aggregate(req, config, cache, url_config)
-            log_request(req, reqd, resp, url_config)
+            log_request(access_log_doc, req, reqd, resp, url_config)
             return resp
 
         if len(comps) == 0 and not req.url.query:
@@ -446,6 +492,12 @@ def create_levior_handler(config: DictConfig,
                     URL(f'https://searx.be/search?q={term}')
                 )
             )
+        elif len(comps) == 1 and comps[0] == 'access_log' and config.get(
+                'access_log_endpoint', False) is True:
+            data = '# Access log\n'
+            data += '\n'.join(
+                reversed([gmi for gmi in access_log_doc.emit_trim_gmi()]))
+            return await data_response(req, data.encode())
         elif len(comps) > 0:
             domain = comps[0]
 
@@ -506,7 +558,7 @@ def create_levior_handler(config: DictConfig,
             if not resp or not rsc_ctype or resp.status != 200:
                 return await http_crawler_error_response(req, resp.status)
 
-        resp = await build_response(
+        resp, title = await build_response(
             req,
             config,
             url_config,
@@ -519,7 +571,8 @@ def create_levior_handler(config: DictConfig,
             req_path=path
         )
 
-        log_request(req, reqd, resp, url_config)
+        log_request(access_log_doc, req, reqd, resp, url_config,
+                    title=title)
 
         return resp
 
@@ -565,7 +618,7 @@ def create_levior_handler(config: DictConfig,
             if not resp or not rsc_ctype or resp.status != 200:
                 return await http_crawler_error_response(req, resp.status)
 
-        resp = await build_response(
+        resp, title = await build_response(
             req,
             config,
             url_config,
@@ -577,7 +630,8 @@ def create_levior_handler(config: DictConfig,
             proxy_mode=True
         )
 
-        log_request(req, reqd, resp, url_config)
+        log_request(access_log_doc, req, reqd, resp, url_config,
+                    title=title)
 
         return resp
 
