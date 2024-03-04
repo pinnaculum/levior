@@ -1,6 +1,7 @@
 import sys
 import asyncio
 import argparse
+import functools
 import traceback
 import signal
 from asyncio import tasks
@@ -206,7 +207,7 @@ def parse_args(args: list = None):
     return parser.parse_args(args=args)
 
 
-async def stop_process(sig, loop) -> None:
+async def stop_process(server, sig, loop) -> None:
     if crawler.rhtml_session:
         # Close the AsyncHTMLSession, this will stop the browser process
         await crawler.rhtml_session.close()
@@ -233,13 +234,18 @@ def run():
     logger = logging.getLogger()
     logger.setLevel('DEBUG')
 
+    config, server = levior_configure_server(args)
+
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
-        loop.add_signal_handler(sig, lambda sig=sig:
-                                asyncio.create_task(stop_process(sig, loop)))
+        loop.add_signal_handler(
+            sig,
+            functools.partial(
+                asyncio.create_task,
+                stop_process(server, sig, loop)
+            )
+        )
 
     try:
-        config, server = levior_configure_server(args)
-
         if config.daemonize or config.log_file_path:
             file_handler = logging.FileHandler(
                 config.log_file_path if

@@ -1,6 +1,14 @@
 hostname: localhost
 port: 1965
 
+#
+# Restrict who can access the proxy
+#
+# client_ip_allow:
+#   - 127.0.0.1
+#   - ::1
+#   - 192.168.1.0/24
+
 # Service mode. Can be 'server', 'proxy', or 'proxy,server'
 # mode: 'proxy'
 
@@ -17,6 +25,15 @@ port: 1965
 #
 # js_render: true
 # js_render_always: true
+#
+#
+# Access log settings
+#
+# Cache the access log in the diskcache
+# cache_access_log: true
+#
+# Enable the /access_log endpoint
+# access_log_endpoint: true
 
 # Cache settings
 #

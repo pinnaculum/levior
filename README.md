@@ -76,6 +76,10 @@ levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
 
+## Daemonization
+
+Use **--daemon** or **-d** to run levior as a daemon.
+
 ## Logging
 
 ### Access log
@@ -98,9 +102,16 @@ proxy's access log in the gemtext format.
 access_log_endpoint: true
 ```
 
-## Daemonization
+## Restricting access by IP address or network
 
-Use **--daemon** or **-d** to run levior as a daemon.
+You can restrict access to the proxy by declaring a list of
+allowed IP addresses or networks in your config file.
+
+```yaml
+client_ip_allow:
+  - 127.0.0.1
+  - 10.0.1.0/24
+```
 
 ## URL rules
 
@@ -143,7 +154,7 @@ The result of the *geminification* of the pages (the gemtext document)
 is never cached.
 
 Set the *cache* attribute in your rule to cache the data. The *ttl*
-(time-to-live) attribute determines the expiration lifetime for the
+(time-to-live) attribute determines the expiration lifetime (in seconds) for the
 resource's content in the cache. The data will be served from the cache
 until the ttl expires (subsequent requests will trigger a refetch).
 

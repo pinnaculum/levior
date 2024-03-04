@@ -5,7 +5,7 @@ from io import StringIO
 
 from pathlib import Path
 from importlib import resources
-from typing import Union, TextIO
+from typing import Tuple, Union, TextIO
 
 from aiogemini.tofu import create_server_ssl_context
 from aiogemini.server import Server
@@ -20,6 +20,8 @@ from omegaconf import ListConfig
 from . import __appname__
 from . import default_cert_paths
 from . import ocresolvers  # noqa
+
+from .caching import load_cached_access_log
 from .handler import create_levior_handler
 from .rules import parse_rules
 
@@ -196,12 +198,10 @@ def configure_cache(config: DictConfig) -> diskcache.Cache:
     )
 
 
-def levior_configure_server(args) -> (DictConfig, Server):
+def levior_configure_server(args) -> Tuple[DictConfig, Server]:
     """
     Create a levior server from the command-line config arguments
     or by using a YAML config file.
-
-    :rtype: Server
     """
 
     config, rules = get_config(args)
@@ -221,9 +221,14 @@ def levior_configure_server(args) -> (DictConfig, Server):
     else:
         cert_path, key_path = default_cert_paths()
 
+    cache = configure_cache(config)
+
     return (config, Server(
         create_server_ssl_context(cert_path, key_path),
-        create_levior_handler(config, configure_cache(config), rules),
+        create_levior_handler(
+            config, cache, rules,
+            access_log=load_cached_access_log(cache)
+        ),
         host=config.get('hostname', 'localhost'),
         port=config.get('port', 1965)
     ))

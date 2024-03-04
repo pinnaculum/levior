@@ -55,10 +55,11 @@ async def error_response(req,
 
 
 async def proxy_reqrefused_response(req, message: str) -> Response:
-    response = data_response_init(req, status=Status.PROXY_REQUEST_REFUSED)
-    await response.write(message.encode())
-    await response.write_eof()
-    return response
+    return await error_response(
+        req,
+        reason=message,
+        status=Status.PROXY_REQUEST_REFUSED
+    )
 
 
 async def http_crawler_error_response(req: Request,
@@ -83,4 +84,11 @@ async def http_crawler_error_response(req: Request,
         f'# HTTP crawler error for: {req.url}\n'
         f'HTTP status code: {http_status}',
         status=status
+    )
+
+
+async def markdownification_error(req, url):
+    return await error_response(
+        req,
+        f'Markdownification of {url} failed'
     )

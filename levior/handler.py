@@ -5,7 +5,7 @@ import sys
 import traceback
 from yarl import URL
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Tuple
 from datetime import datetime
 
 from aiogemini import Status
@@ -20,11 +20,21 @@ from omegaconf import DictConfig
 
 from trimgmi import Document as GmiDocument
 
+from IPy import IP
+
 from . import crawler
 from . import feed2gem
 from . import mounts
 
+from .caching import cache_key_for_url
+from .caching import cache_resource
+from .caching import cache_persist_task
+
 from .filters import run_gemtext_filters
+
+from .request import log_request
+from .request import get_req_ipaddr
+from .request import ipaddr_allowed
 
 from .response import http_crawler_error_response
 from .response import data_response
@@ -33,43 +43,10 @@ from .response import error_response
 from .response import input_response
 from .response import redirect_response
 from .response import proxy_reqrefused_response
+from .response import markdownification_error
 
 
 logger = logging.getLogger()
-
-
-def cache_key_for_url(url: URL) -> str:
-    """
-    Return the diskcache key for this URL, stripped of its optional
-    fragment and user auth/password attributes.
-    """
-    return str(url.with_fragment(None).with_user(None).with_password(None))
-
-
-def cache_resource(cache: diskcache.Cache,
-                   url: URL, ctype: str, data,
-                   ttl: Union[int, float] = None) -> bool:
-    """
-    Cache the content associated with a URL
-    """
-    try:
-        lifetime = None
-
-        if isinstance(ttl, (int, float)):
-            if ttl >= 0:
-                lifetime = int(ttl)
-            elif ttl < 0:
-                # Negative ttl = never lifetime
-                lifetime = None
-
-        cache.set(cache_key_for_url(url),
-                  (ctype, data, None),
-                  expire=lifetime, retry=True)
-
-        return True
-    except Exception:
-        traceback.print_exc()
-        return False
 
 
 def get_url_config(config: DictConfig,
@@ -88,13 +65,6 @@ def get_url_config(config: DictConfig,
             break
 
     return url_config
-
-
-async def markdownification_error(req, url):
-    return await error_response(
-        req,
-        f'Markdownification of {url} failed'
-    )
 
 
 def gemtext_title_extract(gemtext: str) -> str:
@@ -371,51 +341,27 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
-def log_request(access_log: GmiDocument,
-                req: Request, reqd: datetime,
-                resp: Response, url_config,
-                title: str = None) -> None:
-    """
-    Log a request's URL and response status as a gemtext link.
-    """
-
-    peer: tuple = None
-    rdt: str = reqd.strftime("%d/%b/%Y %H:%M:%S")
-
-    try:
-        peer = req.transport.get_extra_info('peername')
-    except BaseException:
-        pass
-
-    client_ip = peer[0] if peer else 'Unknown'
-
-    gemline: str = f'=> {req.url}  [{rdt}] '
-    if title:
-        gemline += title
-    else:
-        gemline += str(req.url)
-
-    gemline += f'({client_ip}, status: {resp.status.value}, '
-    gemline += f'ctype: {resp.content_type})'
-
-    access_log.append(gemline)
-
-    logger.info(gemline)
-
-
 def create_levior_handler(config: DictConfig,
                           cache: diskcache.Cache,
-                          rules) -> _RequestHandler:
+                          rules,
+                          access_log: GmiDocument = None) -> _RequestHandler:
+    loop = asyncio.get_event_loop()
     mountpoints: dict = {}
-    access_log_doc: GmiDocument = GmiDocument()
 
-    try:
-        if config.get('tor') is True:
-            socksp_url = 'socks5://localhost:9050'
-        else:
-            socksp_url = config.socks5_proxy
-    except Exception:
-        socksp_url = None
+    access_log_doc: GmiDocument = access_log if access_log else GmiDocument()
+    access_log_doc._scount = 0
+
+    if config.get('cache_access_log', False) is True:
+        loop.create_task(cache_persist_task(cache, access_log_doc))
+
+    ipfilter_allow: list = [
+        IP(ip) for ip in config.get('client_ip_allow', [])
+    ]
+
+    if config.get('tor') is True:
+        socksp_url = 'socks5://localhost:9050'
+    else:
+        socksp_url = config.socks5_proxy
 
     for mpath, mcfg in config.get('mount', {}).items():
         _type = mcfg.pop('type', None)
@@ -497,6 +443,7 @@ def create_levior_handler(config: DictConfig,
             data = '# Access log\n'
             data += '\n'.join(
                 reversed([gmi for gmi in access_log_doc.emit_trim_gmi()]))
+            data += f'\n{datetime.utcnow()}'
             return await data_response(req, data.encode())
         elif len(comps) > 0:
             domain = comps[0]
@@ -574,6 +521,8 @@ def create_levior_handler(config: DictConfig,
         log_request(access_log_doc, req, reqd, resp, url_config,
                     title=title)
 
+        access_log_doc._scount += 1
+
         return resp
 
     async def handle_request_proxy_mode(req: Request) -> Response:
@@ -633,9 +582,26 @@ def create_levior_handler(config: DictConfig,
         log_request(access_log_doc, req, reqd, resp, url_config,
                     title=title)
 
+        access_log_doc._scount += 1
         return resp
 
     async def handle_request(req: Request) -> Response:
+        """
+        Main entrypoint for requests.
+        """
+
+        client_ip: IP = get_req_ipaddr(req)
+
+        if len(ipfilter_allow) > 0 and not ipaddr_allowed(
+                client_ip, ipfilter_allow):
+            # The client's IP is not allowed to access the service
+
+            return await proxy_reqrefused_response(
+                req,
+                f'{req.url}: Your IP address ({client_ip}) is not allowed '
+                'to access the service'
+            )
+
         modes = config.get('mode', 'proxy,server').split(',')
 
         if req.url.scheme == 'gemini' and 'server' in modes:
