@@ -1,8 +1,11 @@
+# Web to Gemini proxy
+
 ![logo](https://gitlab.com/cipres/levior/-/raw/master/media/img/levior-256.png)
 
 > *Pāpiliō levior est ave* (The butterfly is lighter than the bird)
 
-*levior* (latin word meaning *lighter*) is a web (HTTP/HTTPs) to Gemini proxy.
+*levior* (a latin word meaning *lighter*) is a web (HTTP/HTTPs) to
+[Gemini](https://geminiprotocol.net) proxy.
 It converts web pages (as well as Atom/RSS feeds) on-the-fly to
 the [gemtext](https://geminiprotocol.net/docs/gemtext.gmi) format,
 allowing you to browse regular web pages with any Gemini browser without having
@@ -15,15 +18,15 @@ dynamic websites.
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
 
-# Supporting this project
+## Supporting this project
 
 If you want to support this project, you can
 make a donation [here](https://ko-fi.com/cipres) (or
 [here](https://liberapay.com/galacteek)).
 
-# Installation
+## Installation
 
-## AppImage
+### AppImage
 
 You can get the latest AppImage [here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in *~/.local/bin*:
 
@@ -32,26 +35,26 @@ curl -L -o ~/.local/bin/levior https://gitlab.com/cipres/levior/-/releases/conti
 chmod +x ~/.local/bin/levior
 ```
 
-## Manual Install
+### Manual Install
 
 ```sh
-pip install -e .
+pip install .
 ```
 
 For zim or uvloop support, install the extra requirements:
 
 ```sh
-pip install -e '.[zim]'
-pip install -e '.[uvloop]'
+pip install '.[zim]'
+pip install '.[uvloop]'
 ```
 
 For Javascript rendering, install the *js* extra:
 
 ```sh
-pip install -e '.[js]'
+pip install '.[js]'
 ```
 
-# Usage
+## Usage
 
 *levior* can be configured from the command-line or via a *YAML* config file
 (if a config file is provided, settings from both sources are merged to create
@@ -98,7 +101,7 @@ Set *access_log_endpoint* to *true* in your config file to enable the access
 log endpoint **/access_log** on the server. This endpoint shows the
 proxy's access log in the gemtext format.
 
-```yaml
+```yaml hl_lines="1"
 access_log_endpoint: true
 ```
 
@@ -123,7 +126,7 @@ be a regular expression or a list of regular expressions. If the *response*
 attribute is defined, the *status* attribute must be set as an
 [aiogemini Status code](https://github.com/keis/aiogemini/blob/master/aiogemini/__init__.py). Here are some basic examples of custom rules:
 
-```yaml
+```yaml hl_lines="3 4"
 rules:
   - url: '^https?://[\\w.-]*google'
     response:
@@ -141,7 +144,7 @@ rules:
 
 Set *js_render* in the rule to enable JS rendering.
 
-```yaml
+```yaml hl_lines="3"
 rules:
   - url: '^https?://www.requires-js.org'
     js_render: true
@@ -158,7 +161,7 @@ Set the *cache* attribute in your rule to cache the data. The *ttl*
 resource's content in the cache. The data will be served from the cache
 until the ttl expires (subsequent requests will trigger a refetch).
 
-```yaml
+```yaml hl_lines="3 4"
 rules:
   - url: '^https?://www.thingstokeep.org'
     cache: true
@@ -193,7 +196,7 @@ rules:
 To pass params to the rule from the config file, set the rule path by setting
 the *src* attribute, and set the params via the *with* attribute.
 
-```yaml
+```yaml hl_lines="2 3"
 include:
   - src: words_upper.yaml
     with:
@@ -222,7 +225,7 @@ It is possible to aggregate multiple Atom/RSS web feeds into a single
 tinylog, by setting the rule type to *feeds_aggregator* and defining the
 list of feeds. Example:
 
-```yaml
+```yaml hl_lines="3"
 rules:
   - url: '^gemini://localhost/francetv'
     type: 'feeds_aggregator'
@@ -239,7 +242,7 @@ rules:
 When you are sourcing a config file that includes aggregation rules,
 you can enable or disable certain feeds using the parameters:
 
-```yaml
+```yaml hl_lines="4 5"
   - src: levior:sites/francetvinfo
     with:
       feeds:
@@ -256,7 +259,7 @@ the *strip_emailaddrs* function found in the *levior.filters.links* python
 module (if you don't specify a function name, it will call the
 *gemtext_filter* function/coroutine in that module by default):
 
-```yaml
+```yaml hl_lines="6"
 urules:
   - url:
     - "https://searx.be/search"
@@ -273,7 +276,7 @@ urules:
 You can also pass params to your filter. This rule removes all (English)
 wikipedia URLs and PNG image URLs in the final gemtext:
 
-```yaml
+```yaml hl_lines="5 6 7"
 urules:
   - url: ".*"
     gemtext_filters:
