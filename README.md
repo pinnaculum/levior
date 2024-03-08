@@ -168,6 +168,17 @@ rules:
     ttl: 86400
 ```
 
+#### Caching links on pages
+
+Specific links to cache the page for a few days (or forever) can be shown
+at the top of the page, with the *page_cachelinks_show* setting. This makes
+it easy to cache a page that you've just browsed without having to define
+custom rules.
+
+```yaml
+page_cachelinks_show: true
+```
+
 ### Includes
 
 It is also possible to load predefined rules by using the *include* keyword

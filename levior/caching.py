@@ -1,5 +1,8 @@
 import asyncio
+import logging
 import traceback
+
+from datetime import timedelta
 from io import BytesIO
 from typing import Union, Optional
 
@@ -9,12 +12,37 @@ from yarl import URL
 import diskcache
 
 
+logger = logging.getLogger()
+
+
+# The URL query key used to set the cache ttl for a page
+query_cachettl_key = 'levior_cache_ttl'
+
+# The URL query key used to cache a page forever
+query_cache_forever_key = 'levior_cache_forever'
+
+
+# The default diskcache key for the main access log
+global_access_log_key: str = 'main_access_log'
+
+# Tag for access log cache entries
+access_log_tag: str = 'access_log'
+
+
+def humanize_seconds(seconds: int) -> str:
+    return str(timedelta(seconds=seconds))
+
+
 def cache_key_for_url(url: URL) -> str:
     """
     Return the diskcache key for this URL, stripped of its optional
-    fragment and user auth/password attributes.
+    fragment, query and user auth/password attributes.
     """
-    return str(url.with_fragment(None).with_user(None).with_password(None))
+    return str(url
+               .with_fragment(None)
+               .with_user(None)
+               .with_password(None)
+               .with_query(None))
 
 
 def cache_resource(cache: diskcache.Cache,
@@ -25,6 +53,7 @@ def cache_resource(cache: diskcache.Cache,
     """
     try:
         lifetime = None
+        cache_key: str = cache_key_for_url(url)
 
         if isinstance(ttl, (int, float)):
             if ttl >= 0:
@@ -33,9 +62,15 @@ def cache_resource(cache: diskcache.Cache,
                 # Negative ttl = never lifetime
                 lifetime = None
 
-        cache.set(cache_key_for_url(url),
+        cache.set(cache_key,
                   (ctype, data, None),
                   expire=lifetime, retry=True)
+
+        if lifetime is None:
+            logger.info(f'{cache_key}: cached forever')
+        else:
+            logger.info(
+                f'{cache_key}: cached for {humanize_seconds(lifetime)}')
 
         return True
     except Exception:
@@ -43,11 +78,14 @@ def cache_resource(cache: diskcache.Cache,
         return False
 
 
-# The default diskcache key for the main access log
-global_access_log_key: str = 'main_access_log'
+def cache_update_expiration(cache: diskcache.Cache,
+                            url: URL,
+                            ttl: Union[int, float] = None) -> bool:
+    """
+    Update the expiration time for this url.
+    """
 
-# Tag for access log cache entries
-access_log_tag: str = 'access_log'
+    return cache.touch(cache_key_for_url(url), expire=ttl)
 
 
 def cache_access_log(cache: diskcache.Cache,

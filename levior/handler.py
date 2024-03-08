@@ -25,10 +25,7 @@ from IPy import IP
 from . import crawler
 from . import feed2gem
 from . import mounts
-
-from .caching import cache_key_for_url
-from .caching import cache_resource
-from .caching import cache_persist_task
+from . import caching
 
 from .filters import run_gemtext_filters
 
@@ -74,6 +71,32 @@ def gemtext_title_extract(gemtext: str) -> str:
             return ma.group(1)
 
 
+def page_prepend_actions(config: DictConfig,
+                         gemtext: str,
+                         url: URL) -> str:
+    """
+    Add links for caching a page at the beginning of a gemtext document
+    """
+
+    actions: str = ''
+
+    forever_query = dict(url.query)
+    forever_query[caching.query_cache_forever_key] = 'true'
+
+    for ttl_day in range(1,
+                         config.get('page_cachelinks_maxdays', 14),
+                         config.get('page_cachelinks_daystep', 3)):
+        orig_query = dict(url.query)
+        orig_query[caching.query_cachettl_key] = str(86400 * ttl_day)
+
+        actions += f'=> {url.with_query(orig_query)} ' + \
+            f'Cache this page for {ttl_day} day(s)\n'
+
+    actions += f'=> {url.with_query(forever_query)}  Cache this page forever\n'
+
+    return actions + gemtext
+
+
 async def build_response(req: Request,
                          config: DictConfig,
                          url_config: dict,
@@ -82,7 +105,7 @@ async def build_response(req: Request,
                          data: bytes,
                          domain: str = None,
                          gemini_server_host: str = None,
-                         cached: bool = False,
+                         is_cached: bool = False,
                          proxy_mode: bool = False,
                          req_path: str = None) -> Tuple[Response, str]:
     """
@@ -94,7 +117,7 @@ async def build_response(req: Request,
     :param cache: Disk cache
     :param str rsc_ctype: Resource content type
     :param bytes data: Resource data as bytes
-    :param bool cached: Cached status in disk cache for this URL
+    :param bool is_cached: Cached status in disk cache for this URL
     """
 
     fdoc: GmiDocument = None
@@ -102,7 +125,7 @@ async def build_response(req: Request,
     gemtext: str = None
     doc_title: str = None
 
-    url_cache: bool = cache and not cached and url_config.get('cache')
+    url_cache: bool = cache and not is_cached and url_config.get('cache')
     links_mode: str = url_config.get('links_mode', config.links_mode)
     cache_ttl = None
 
@@ -112,6 +135,22 @@ async def build_response(req: Request,
         cache_ttl = config.cache_ttl_default
     except BaseException:
         traceback.print_exc()
+
+    # Look for a cache ttl option in the query
+    try:
+        if req.url.query.get(caching.query_cache_forever_key):
+            url_cache = True
+            cache_ttl = -1
+        else:
+            url_q_cachettl = int(req.url.query.get(
+                caching.query_cachettl_key)
+            )
+            assert url_q_cachettl > 0
+
+            url_cache = True
+            cache_ttl = url_q_cachettl
+    except (AssertionError, TypeError, ValueError):
+        pass
 
     gemtext_filters = url_config.get('gemtext_filters', [])
 
@@ -188,18 +227,21 @@ async def build_response(req: Request,
                 [geml for geml in fdoc.emit_trim_gmi()]
             )
 
-        if not req.url.query and url_cache:
-            # Only cache documents with no query
-            cache_resource(cache, req.url, rsc_ctype, data,
-                           ttl=cache_ttl)
+        # Prepend the cache links if this page is not cached
+        if not is_cached and config.get('page_cachelinks_show', False) is True:
+            gemtext = page_prepend_actions(config, gemtext, req.url)
+
+        if url_cache:
+            caching.cache_resource(cache, req.url, rsc_ctype, data,
+                                   ttl=cache_ttl)
 
         return (await data_response(req, gemtext.encode(), 'text/gemini'),
                 doc_title)
     else:
         if data:
-            if not cached and url_cache:
-                cache_resource(cache, req.url, rsc_ctype, data,
-                               ttl=cache_ttl)
+            if not is_cached and url_cache:
+                caching.cache_resource(cache, req.url, rsc_ctype, data,
+                                       ttl=cache_ttl)
 
             return (await data_response(req, data, rsc_ctype),
                     doc_title)
@@ -352,7 +394,7 @@ def create_levior_handler(config: DictConfig,
     access_log_doc._scount = 0
 
     if config.get('cache_access_log', False) is True:
-        loop.create_task(cache_persist_task(cache, access_log_doc))
+        loop.create_task(caching.cache_persist_task(cache, access_log_doc))
 
     ipfilter_allow: list = [
         IP(ip) for ip in config.get('client_ip_allow', [])
@@ -468,7 +510,7 @@ def create_levior_handler(config: DictConfig,
         url_http = url.with_scheme('http')
 
         resp, rsc_ctype, rsc_clength, data = None, None, None, None
-        cached = cache.get(cache_key_for_url(url)) if cache else None
+        cached = cache.get(caching.cache_key_for_url(url)) if cache else None
 
         if cached:
             rsc_ctype, data, _ = cached
@@ -514,7 +556,7 @@ def create_levior_handler(config: DictConfig,
             data,
             gemini_server_host=config.hostname,
             domain=domain,
-            cached=cached,
+            is_cached=cached is not None,
             req_path=path
         )
 
@@ -545,7 +587,9 @@ def create_levior_handler(config: DictConfig,
         if cresp:
             return await send_custom_reply(req, cresp)
 
-        cached = cache.get(cache_key_for_url(req.url)) if cache else None
+        cached = cache.get(
+            caching.cache_key_for_url(req.url)) if cache else None
+
         if cached:
             rsc_ctype, data, _ = cached
         else:
@@ -575,7 +619,7 @@ def create_levior_handler(config: DictConfig,
             rsc_ctype,
             data,
             domain=req.url.host,
-            cached=cached,
+            is_cached=cached is not None,
             proxy_mode=True
         )
 

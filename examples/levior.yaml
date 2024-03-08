@@ -46,6 +46,11 @@ port: 1965
 #
 # TTL (cache items expire time, in seconds)
 # cache_ttl_default: 600
+#
+# Enable or disable the links at the top of the page to
+# instruct the proxy to cache the page for x days (or forever)
+#
+# page_cachelinks_show: true
 
 verify_ssl: true
 
