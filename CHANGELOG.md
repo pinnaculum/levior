@@ -6,6 +6,8 @@
 - Persist the access log in the diskcache (optional)
 - Show gemtext links at the top of the page to cache the converted webpage
   (for a certain period of time or forever)
+- Server route to list cache entries
+- CI: Use pytest-cov and freezegun for unit tests
 
 ## [1.3.1] - 2024-03-03
 

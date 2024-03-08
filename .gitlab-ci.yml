@@ -59,7 +59,7 @@ build:
     - flake8 levior
 
     - python -m build
-    - pytest -v -s tests
+    - pytest --cov -v -s tests
 
     - .gitlab/appimage-build
 

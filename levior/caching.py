@@ -1,15 +1,19 @@
+import appdirs
 import asyncio
 import logging
 import traceback
 
+import diskcache
+from pathlib import Path
 from datetime import timedelta
 from io import BytesIO
 from typing import Union, Optional
+from yarl import URL
 
+from omegaconf import DictConfig
 from trimgmi import Document as GmiDocument
 
-from yarl import URL
-import diskcache
+from . import __appname__
 
 
 logger = logging.getLogger()
@@ -31,6 +35,36 @@ access_log_tag: str = 'access_log'
 
 def humanize_seconds(seconds: int) -> str:
     return str(timedelta(seconds=seconds))
+
+
+def configure_cache(config: DictConfig) -> diskcache.Cache:
+    cache_dir: Path = Path(
+        config.cache_path if config.cache_path else
+        appdirs.user_cache_dir(__appname__)
+    )
+
+    if not cache_dir.exists():
+        cache_dir.mkdir(parents=True)
+
+    if config.cache_eviction_policy in ['least-recently-stored',
+                                        'least-recently-used',
+                                        'least-frequently-used',
+                                        'none']:
+        cpolicy = config.cache_eviction_policy
+    else:
+        cpolicy = 'least-recently-stored'
+
+    if isinstance(config.cache_size_limit, (int, float)) and \
+       config.cache_size_limit > 0:
+        size_limit_mb = config.cache_size_limit
+    else:
+        size_limit_mb = 2048
+
+    return diskcache.Cache(
+        str(cache_dir),
+        eviction_policy=cpolicy,
+        size_limit=size_limit_mb * 1024 * 1024
+    )
 
 
 def cache_key_for_url(url: URL) -> str:

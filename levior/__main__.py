@@ -11,13 +11,13 @@ from aiogemini.tofu import create_server_ssl_context
 from aiogemini.server import Server
 
 import appdirs
-import diskcache
 
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from omegaconf import ListConfig
 
 from . import __appname__
+from . import caching
 from . import default_cert_paths
 from . import ocresolvers  # noqa
 
@@ -168,36 +168,6 @@ def get_config(args) -> DictConfig:
     return config, rules
 
 
-def configure_cache(config: DictConfig) -> diskcache.Cache:
-    cache_dir: Path = Path(
-        config.cache_path if config.cache_path else
-        appdirs.user_cache_dir(__appname__)
-    )
-
-    if not cache_dir.exists():
-        cache_dir.mkdir(parents=True)
-
-    if config.cache_eviction_policy in ['least-recently-stored',
-                                        'least-recently-used',
-                                        'least-frequently-used',
-                                        'none']:
-        cpolicy = config.cache_eviction_policy
-    else:
-        cpolicy = 'least-recently-stored'
-
-    if isinstance(config.cache_size_limit, (int, float)) and \
-       config.cache_size_limit > 0:
-        size_limit_mb = config.cache_size_limit
-    else:
-        size_limit_mb = 2048
-
-    return diskcache.Cache(
-        str(cache_dir),
-        eviction_policy=cpolicy,
-        size_limit=size_limit_mb * 1024 * 1024
-    )
-
-
 def levior_configure_server(args) -> Tuple[DictConfig, Server]:
     """
     Create a levior server from the command-line config arguments
@@ -221,7 +191,7 @@ def levior_configure_server(args) -> Tuple[DictConfig, Server]:
     else:
         cert_path, key_path = default_cert_paths()
 
-    cache = configure_cache(config)
+    cache = caching.configure_cache(config)
 
     return (config, Server(
         create_server_ssl_context(cert_path, key_path),

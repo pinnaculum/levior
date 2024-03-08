@@ -249,6 +249,38 @@ async def build_response(req: Request,
             return (await error_response(req, 'Empty page'), None)
 
 
+async def build_cache_listing(req: Request,
+                              config: DictConfig,
+                              cache: diskcache.Cache) -> Response:
+    """
+    List all the entries in the cache and show the content's URL
+    and its expiration time for each entry.
+    """
+
+    gemtext: str = '# Cache entries\n'
+
+    for key in list(cache.iterkeys()):
+        try:
+            exp_dt, url = None, URL(key)
+            assert url.scheme
+
+            entry, expires = cache.get(key, expire_time=True)
+
+            if expires:
+                exp_dt = datetime.fromtimestamp(expires)
+
+            gemtext += f'=> {url}  {url} '
+
+            if exp_dt:
+                gemtext += f'(expires: {exp_dt})\n'
+            else:
+                gemtext += '(no expiration date)\n'
+        except BaseException:
+            continue
+
+    return await data_response(req, gemtext.encode(), 'text/gemini')
+
+
 async def feeds_aggregate(req: Request,
                           config: DictConfig,
                           cache: diskcache.Cache,
@@ -445,7 +477,7 @@ def create_levior_handler(config: DictConfig,
             return await send_custom_reply(req, cresp)
 
         sp = req.url.path.split('/')
-        comps = [x for x in sp if x != '']
+        pparts = [x for x in sp if x != '']
 
         rule_type = url_config.get('type')
 
@@ -454,9 +486,9 @@ def create_levior_handler(config: DictConfig,
             log_request(access_log_doc, req, reqd, resp, url_config)
             return resp
 
-        if len(comps) == 0 and not req.url.query:
+        if len(pparts) == 0 and not req.url.query:
             return await input_response(req, 'Please enter a domain to visit')
-        elif len(comps) == 0 and req.url.query:
+        elif len(pparts) == 0 and req.url.query:
             keys = list(req.url.query.keys())
             if keys:
                 domain = keys.pop(0)
@@ -466,7 +498,7 @@ def create_levior_handler(config: DictConfig,
                 )
             else:
                 return await error_response(req, 'Empty query')
-        elif len(comps) == 1 and comps[0] == 'search':
+        elif len(pparts) == 1 and pparts[0] == 'search':
             q = list(req.url.query.keys())
             if not q:
                 return await input_response(req, 'Please enter a search query')
@@ -480,15 +512,17 @@ def create_levior_handler(config: DictConfig,
                     URL(f'https://searx.be/search?q={term}')
                 )
             )
-        elif len(comps) == 1 and comps[0] == 'access_log' and config.get(
+        elif len(pparts) == 1 and pparts[0] == 'access_log' and config.get(
                 'access_log_endpoint', False) is True:
             data = '# Access log\n'
             data += '\n'.join(
                 reversed([gmi for gmi in access_log_doc.emit_trim_gmi()]))
             data += f'\n{datetime.utcnow()}'
             return await data_response(req, data.encode())
-        elif len(comps) > 0:
-            domain = comps[0]
+        elif len(pparts) == 1 and pparts[0] == 'cache':
+            return await build_cache_listing(req, config, cache)
+        elif len(pparts) > 0:
+            domain = pparts[0]
 
             # Check mounts
 
@@ -496,7 +530,7 @@ def create_levior_handler(config: DictConfig,
                 if mp == f'/{domain}':
                     return await mount.handle_request(req, config)
 
-        path = '/' + '/'.join(comps[1:]) if len(comps) > 1 else '/'
+        path = '/' + '/'.join(pparts[1:]) if len(pparts) > 1 else '/'
         if req.url.path.endswith('/') and not path.endswith('/'):
             path += '/'
 
