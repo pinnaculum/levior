@@ -55,7 +55,7 @@ build:
     - python3 -m pip install --upgrade pip
 
     - pip install build wheel flake8
-    - pip install '.[zim,test]'
+    - pip install '.[zim,js,test]'
     - flake8 levior
 
     - python -m build

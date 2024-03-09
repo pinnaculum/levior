@@ -7,8 +7,11 @@ rules:
   # Aggregate some of the main francetvinfo RSS feeds into one tinylog,
   # accessible from a unique gemini URL
 
-  - url: '^gemini://[\w\.]+/ftvinfo'
+  - url: '^gemini://[\w\.:]+/ftvinfo'
     type: 'feeds_aggregator'
+
+    route: '/ftvinfo'
+    title: 'FranceTV info'
 
     feeds:
       https://www.francetvinfo.fr/politique.rss:

@@ -1,3 +1,14 @@
+## [1.3.3] - 2024-03-19
+
+### Changed
+
+- Use a URL routes mapper for the server's endpoints
+- Output the server's access URL when starting
+
+### Fixed
+
+- Fix the crawler's URL rewriting code when the listening port != 1965
+
 ## [1.3.2] - 2024-03-04
 
 ### Added

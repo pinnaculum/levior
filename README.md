@@ -74,6 +74,9 @@ levior -d --mode=proxy
 levior -c config.yaml
 ```
 
+Once *levior* is running, open your gemini browser and go to
+[gemini://localhost](gemini://localhost).
+
 Socks5 proxies are supported with **--socks5-proxy**. **--tor**
 will use the default socks5 proxy address for Tor (*socks5://localhost:9050*).
 
@@ -449,11 +452,17 @@ See the [example config file here](https://gitlab.com/cipres/levior/-/raw/master
 
 ### /
 
-When accessing */*, you'll be prompted for a domain name to browse.
+The homepage lists the links for the main endpoints, the mountpoints and
+the links to access the aggregated RSS/Atom feeds.
+
+### /goto
+
+When accessing */goto*, or */go*, you'll be prompted for a domain name or
+a full URL to browse.
 
 ### /{domain}
 
-When accessing */{domain}*, *levior* will proxy *https://domain* to the
+When accessing */{domain}*, *levior* will proxy *https://{domain}* to the
 Gemini browser. Examples:
 
 ```sh

@@ -6,6 +6,7 @@ import re
 import traceback
 
 from aiohttp_socks import ProxyConnector
+from aiogemini import GEMINI_PORT
 
 from pathlib import Path
 from urllib.parse import urlparse
@@ -270,6 +271,8 @@ class PageConverter(BaseConverter):
             ru = URL.build(
                 scheme='gemini',
                 host=self.gemini_server_host,
+                port=self.config.port if
+                self.config.port != GEMINI_PORT else None,
                 path='/' + url.netloc + url.path,
                 query=url.query,
                 encoded=True  # Critical
@@ -283,6 +286,8 @@ class PageConverter(BaseConverter):
             ru = URL.build(
                 scheme='gemini',
                 host=self.gemini_server_host,
+                port=self.config.port if
+                self.config.port != GEMINI_PORT else None,
                 path='/' + self.domain +
                 urljoin(self.req_path, url.path if url.path else ''),
                 query=url.query,

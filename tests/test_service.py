@@ -382,12 +382,39 @@ class TestLeviorConfig:
 
 class TestLeviorModes:
     @pytest.mark.asyncio
-    async def test_server_mode(self, server, client):
-        # / must ask for an INPUT
-        req = Request(url=URL('gemini://localhost'))
+    async def test_server_routes(self, server, client):
+        # /goto must ask for an INPUT
+        req = Request(url=URL('gemini://localhost/goto'))
         resp = await client.send_request(req)
         assert resp.status == Status.INPUT
 
+        # /goto when passing a domain
+        req = Request(
+            url=URL('gemini://localhost/goto').with_query('geminiprotocol.net')
+        )
+        resp = await client.send_request(req)
+        assert resp.status == Status.REDIRECT_TEMPORARY
+        assert resp.reason == 'gemini://localhost/geminiprotocol.net/'
+
+        # /goto when passing a a full URL
+        req = Request(
+            url=URL('gemini://localhost/goto').with_query(
+                'https://geminiprotocol.net')
+        )
+        resp = await client.send_request(req)
+        assert resp.status == Status.REDIRECT_TEMPORARY
+        assert resp.reason == 'gemini://localhost/geminiprotocol.net/'
+
+        # Test that nonexistent routes return NOT_FOUND
+        for path in ['/noway', '/not_here', '/404', '/localhost']:
+            assert (await client.send_request(
+                Request(
+                    url=URL('gemini://localhost').with_path(path)
+                )
+            )).status == Status.NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_server_mode(self, server, client):
         # Fetch https://geminiprotocol.net and check that the links
         # are rewired to go through localhost
 
@@ -429,6 +456,11 @@ class TestLeviorModes:
         # In server-only mode, this should fail with PROXY_REQUEST_REFUSED
         resp, data = await client.proxy_request('https://docs.aiohttp.org')
         assert resp.status == Status.PROXY_REQUEST_REFUSED
+
+        resp, doc = await client.request_gmidoc(
+            URL('gemini://localhost/search')
+        )
+        assert resp.status == Status.INPUT
 
     @pytest.mark.asyncio
     async def test_proxy_mode(self, proxy_server, client):
@@ -508,7 +540,7 @@ class TestLeviorModes:
         assert resp.status == Status.SUCCESS
 
         resp = await client.send_request(
-            Request(url=URL('gemini://localhost')))
+            Request(url=URL('gemini://localhost/goto')))
         assert resp.status == Status.INPUT
 
     @pytest.mark.asyncio

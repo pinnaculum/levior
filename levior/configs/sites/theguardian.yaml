@@ -2,6 +2,9 @@ rules:
   - url: '^gemini://[\w\.]+/theguardian'
     type: 'feeds_aggregator'
 
+    route: '/theguardian'
+    title: 'The Guardian'
+
     feeds:
       https://www.theguardian.com/business/economics/rss:
         enabled: ${oc.select:feeds.business.economics,false}

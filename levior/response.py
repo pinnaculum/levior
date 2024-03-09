@@ -2,8 +2,10 @@ from yarl import URL
 from aiogemini import Status, GEMINI_MEDIA_TYPE
 from aiogemini.server import Request, Response
 
+from trimgmi import Document as GmiDocument
 
-def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
+
+def data_response_init(req: Request, content_type=GEMINI_MEDIA_TYPE,
                        status=Status.SUCCESS) -> Response:  # pragma: no cover
     response = Response()
     response.content_type = content_type
@@ -12,7 +14,7 @@ def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
     return response
 
 
-async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
+async def data_response(req: Request, data, content_type=GEMINI_MEDIA_TYPE,
                         reason: str = None,
                         status=Status.SUCCESS) -> Response:
     response = Response()
@@ -23,6 +25,16 @@ async def data_response(req, data, content_type=GEMINI_MEDIA_TYPE,
     await response.write(data)
     await response.write_eof()
     return response
+
+
+async def gmidoc_response(req: Request,
+                          doc: GmiDocument,
+                          content_type=GEMINI_MEDIA_TYPE,
+                          status=Status.SUCCESS) -> Response:
+    data: str = '\n'.join([gmi for gmi in doc.emit_trim_gmi()])
+    return await data_response(req, data.encode(),
+                               content_type=content_type,
+                               status=status)
 
 
 async def input_response(req, text: str) -> Response:

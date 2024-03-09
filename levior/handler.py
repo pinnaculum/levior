@@ -3,15 +3,19 @@ import logging
 import re
 import sys
 import traceback
+import os.path
+
 from yarl import URL
 from pathlib import Path
 from typing import Tuple
 from datetime import datetime
 
+from aiogemini import GEMINI_PORT
 from aiogemini import Status
 from aiogemini.server import _RequestHandler, Request, Response
 
 import diskcache
+import routes
 
 from md2gemini import md2gemini
 
@@ -26,6 +30,7 @@ from . import crawler
 from . import feed2gem
 from . import mounts
 from . import caching
+from . import __version__
 
 from .filters import run_gemtext_filters
 
@@ -41,6 +46,7 @@ from .response import input_response
 from .response import redirect_response
 from .response import proxy_reqrefused_response
 from .response import markdownification_error
+from .response import gmidoc_response
 
 
 logger = logging.getLogger()
@@ -379,6 +385,7 @@ def server_geminize_url(config: DictConfig, url: URL) -> str:
     return URL.build(
         scheme='gemini',
         host=config.hostname,
+        port=config.port if config.port != GEMINI_PORT else None,
         path=f'/{url.host}{url.path}',
         query=url.query,
         fragment=url.fragment
@@ -411,6 +418,209 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
         await resp.write(content.encode())
 
     await resp.write_eof()
+    return resp
+
+
+async def srv_handler_root(route,
+                           req: Request,
+                           config: DictConfig,
+                           cache: diskcache.Cache,
+                           **kwargs):
+    """
+    Home page
+    """
+    mountpoints = kwargs.pop('mountpoints')
+
+    doc = GmiDocument()
+    doc.append(f'# levior v{__version__}')
+    doc.append('=> /goto  Access a website')
+
+    if config.get('access_log_endpoint', False) is True:
+        doc.append('=> /access_log  Access log')
+
+    doc.append('=> /cache  Cache')
+    doc.append('=> /search Web Search')
+
+    rules = kwargs.pop('rules', [])
+
+    doc.append('## Feeds')
+
+    for rule in rules:
+        route_path = rule.config.get('route')
+
+        if isinstance(route_path, str):
+            title = rule.config.get('title', route_path)
+            doc.append(f'=> {route_path} {title}')
+
+    if mountpoints:
+        doc.append('## Mountpoints')
+
+        for mp, mount in mountpoints.items():
+            doc.append(f'=> {mp} {mp}')
+
+    return await gmidoc_response(req, doc)
+
+
+async def srv_handler_cache(route,
+                            req: Request,
+                            config: DictConfig,
+                            cache: diskcache.Cache,
+                            **kwargs):
+    return await build_cache_listing(req, config, cache)
+
+
+async def srv_handler_access_log(route,
+                                 req: Request,
+                                 config: DictConfig,
+                                 cache: diskcache.Cache,
+                                 **kwargs):
+    access_log_doc = kwargs.pop('access_log_doc')
+
+    data = '# Access log\n'
+    data += '\n'.join(
+        reversed([gmi for gmi in access_log_doc.emit_trim_gmi()]))
+    data += f'\n{datetime.utcnow()}'
+    return await data_response(req, data.encode())
+
+
+async def srv_handler_domain_prompt(route,
+                                    req: Request,
+                                    config: DictConfig,
+                                    cache: diskcache.Cache,
+                                    **kwargs):
+    if not req.url.query:
+        return await input_response(
+            req,
+            'Please enter a domain name or a full URL to visit'
+        )
+    else:
+        arg = list(req.url.query.keys()).pop(0)
+        url = URL(arg)
+
+        return await redirect_response(
+            req,
+            server_geminize_url(
+                config, url if url.scheme in ['http', 'https'] else
+                URL.build(scheme='https',
+                          host=arg)
+            )
+        )
+
+
+async def srv_handler_search(route,
+                             req: Request,
+                             config: DictConfig,
+                             cache: diskcache.Cache,
+                             **kwargs):
+    q = list(req.url.query.keys())
+    if not q:
+        return await input_response(req, 'Please enter a search query')
+
+    term = q.pop(0)
+
+    return await redirect_response(
+        req,
+        server_geminize_url(
+            config,
+            URL('https://searx.be/search').with_query(q=term)
+        )
+    )
+
+
+async def srv_handler_mountpoint(route,
+                                 req: Request,
+                                 config: DictConfig,
+                                 cache: diskcache.Cache,
+                                 **kwargs):
+    mountpoints = kwargs.pop('mountpoints')
+
+    for mp, mount in mountpoints.items():
+        if os.path.commonpath([req.url.path, mp]) == mp:
+            return await mount.handle_request(req, config)
+
+    return await error_response(
+        req,
+        f'Mount point handler not found for: {req.url.path}'
+    )
+
+
+async def srv_handler_domain(route,
+                             req: Request,
+                             config: DictConfig,
+                             cache: diskcache.Cache,
+                             **kwargs):
+    access_log_doc = kwargs.pop('access_log_doc')
+    socksp_url = kwargs.pop('socksp_url')
+    url_config = kwargs.pop('url_config')
+
+    domain = route['domain']
+    path = '/' + route.get('path', '')
+
+    url = URL.build(
+        scheme='https',
+        host=domain,
+        path=path,
+        query=req.url.query,
+        fragment=req.url.fragment
+    )
+    url_http = url.with_scheme('http')
+
+    resp, rsc_ctype, rsc_clength, data = None, None, None, None
+    cached = cache.get(caching.cache_key_for_url(url)) if cache else None
+
+    if cached:
+        rsc_ctype, data, _ = cached
+    else:
+        try_urls = [url] if config.get('https_only', False) else [
+            url, url_http]
+
+        for try_url in try_urls:
+            try:
+                resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
+                    try_url,
+                    config,
+                    url_config,
+                    socks_proxy_url=socksp_url,
+                    verify_ssl=config.verify_ssl,
+                    user_agent=config.get('http_user_agent')
+                )
+            except crawler.RedirectRequired as redirect:
+                return await redirect_response(
+                    req,
+                    server_geminize_url(config, redirect.url)
+                )
+            except Exception:
+                continue
+            else:
+                break
+
+        if not resp:
+            return await error_response(
+                req,
+                f'Could not fetch {url} or {url_http}'
+            )
+
+        if not resp or not rsc_ctype or resp.status != 200:
+            return await http_crawler_error_response(req, resp.status)
+
+    resp, title = await build_response(
+        req,
+        config,
+        url_config,
+        cache,
+        rsc_ctype,
+        data,
+        gemini_server_host=config.hostname,
+        domain=domain,
+        is_cached=cached is not None,
+        req_path=path
+    )
+
+    log_request(access_log_doc, req, datetime.now(), resp, url_config,
+                title=title)
+
+    access_log_doc._scount += 1
+
     return resp
 
 
@@ -448,9 +658,67 @@ def create_levior_handler(config: DictConfig,
 
             if zmp.setup():
                 mountpoints[mpath] = zmp
-                print(f'Mounted zim file {_path} on: {mpath}', file=sys.stderr)
             else:
                 print(f'Cannot mount zim file: {_path}', file=sys.stderr)
+
+    # Setup the URL routes mapper
+    srv_routes = routes.Mapper()
+    domain_re: str = R"([a-zA-Z0-9]+(-[A-Za-z0-9]+)*\.)+[A-Za-z]{2,}"
+
+    # Website browsing routes
+    with srv_routes.submapper(controller='domain') as m:
+        m.connect(
+            None, r'/{domain}',
+            requirements={
+                'domain': domain_re
+            },
+            action='root'
+        )
+
+        m.connect(
+            None, r'/{domain}/{path}',
+            requirements={
+                'domain': domain_re,
+                'path': R".*?",
+            },
+            action='path'
+        )
+
+    # Root page
+    srv_routes.connect(None, "/",
+                       controller='root',
+                       action='home')
+
+    # "go to" input page
+    with srv_routes.submapper(controller='domain_prompt') as m:
+        [m.connect(None, path, action='prompt') for path in [
+            '/goto', '/go_to', '/go'
+        ]]
+
+    # Cache listing
+    srv_routes.connect(None, "/cache",
+                       controller='cache',
+                       action='cache')
+
+    # Search
+    srv_routes.connect(None, "/search",
+                       controller='search',
+                       action='search')
+
+    # Access log
+    if config.get('access_log_endpoint', False) is True:
+        srv_routes.connect(None, "/access_log",
+                           controller='access_log',
+                           action="access_log")
+
+    # Connect the routes for the ZIM mountpoints
+    for mp, mount in mountpoints.items():
+        srv_routes.connect(None, mp,
+                           controller='mountpoint',
+                           action="mountpoint")
+        srv_routes.connect(None, mp + "/{filename:.*?}",
+                           controller='mountpoint',
+                           action="mountpoint")
 
     async def handle_request_server_mode(req: Request) -> Response:
         """
@@ -469,14 +737,14 @@ def create_levior_handler(config: DictConfig,
                 'the gemini:// URL scheme'
             )
 
+        route = srv_routes.match(req.url.path)
+        ctrler = route['controller'] if route else None
+
         url_config = get_url_config(config, rules, req.url)
 
         cresp = get_custom_reply(url_config)
         if cresp:
             return await send_custom_reply(req, cresp)
-
-        sp = req.url.path.split('/')
-        pparts = [x for x in sp if x != '']
 
         rule_type = url_config.get('type')
 
@@ -485,120 +753,20 @@ def create_levior_handler(config: DictConfig,
             log_request(access_log_doc, req, reqd, resp, url_config)
             return resp
 
-        if len(pparts) == 0 and not req.url.query:
-            return await input_response(req, 'Please enter a domain to visit')
-        elif len(pparts) == 0 and req.url.query:
-            keys = list(req.url.query.keys())
-            if keys:
-                domain = keys.pop(0)
-                return await redirect_response(
-                    req,
-                    server_geminize_url(config, URL(f'https://{domain}'))
-                )
-            else:
-                return await error_response(req, 'Empty query')
-        elif len(pparts) == 1 and pparts[0] == 'search':
-            q = list(req.url.query.keys())
-            if not q:
-                return await input_response(req, 'Please enter a search query')
+        handler = globals().get(f'srv_handler_{ctrler}') if ctrler else None
 
-            term = q.pop(0)
-
-            return await redirect_response(
-                req,
-                server_geminize_url(
-                    config,
-                    URL(f'https://searx.be/search?q={term}')
-                )
-            )
-        elif len(pparts) == 1 and pparts[0] == 'access_log' and config.get(
-                'access_log_endpoint', False) is True:
-            data = '# Access log\n'
-            data += '\n'.join(
-                reversed([gmi for gmi in access_log_doc.emit_trim_gmi()]))
-            data += f'\n{datetime.utcnow()}'
-            return await data_response(req, data.encode())
-        elif len(pparts) == 1 and pparts[0] == 'cache':
-            return await build_cache_listing(req, config, cache)
-        elif len(pparts) > 0:
-            domain = pparts[0]
-
-            # Check mounts
-
-            for mp, mount in mountpoints.items():
-                if mp == f'/{domain}':
-                    return await mount.handle_request(req, config)
-
-        path = '/' + '/'.join(pparts[1:]) if len(pparts) > 1 else '/'
-        if req.url.path.endswith('/') and not path.endswith('/'):
-            path += '/'
-
-        url = URL.build(
-            scheme='https',
-            host=domain,
-            path=path,
-            query=req.url.query,
-            fragment=req.url.fragment
-        )
-        url_http = url.with_scheme('http')
-
-        resp, rsc_ctype, rsc_clength, data = None, None, None, None
-        cached = cache.get(caching.cache_key_for_url(url)) if cache else None
-
-        if cached:
-            rsc_ctype, data, _ = cached
+        if handler:
+            return await handler(route, req, config, cache,
+                                 url_config=url_config,
+                                 rules=rules,
+                                 mountpoints=mountpoints,
+                                 socksp_url=socksp_url,
+                                 access_log_doc=access_log_doc)
         else:
-            try_urls = [url] if \
-                config.get('https_only', False) else [url, url_http]
-
-            for try_url in try_urls:
-                try:
-                    resp, rsc_ctype, rsc_clength, data = await crawler.fetch(
-                        try_url,
-                        config,
-                        url_config,
-                        socks_proxy_url=socksp_url,
-                        verify_ssl=config.verify_ssl,
-                        user_agent=config.get('http_user_agent')
-                    )
-                except crawler.RedirectRequired as redirect:
-                    return await redirect_response(
-                        req,
-                        server_geminize_url(config, redirect.url)
-                    )
-                except Exception:
-                    continue
-                else:
-                    break
-
-            if not resp:
-                return await error_response(
-                    req,
-                    f'Could not fetch {url} or {url_http}'
-                )
-
-            if not resp or not rsc_ctype or resp.status != 200:
-                return await http_crawler_error_response(req, resp.status)
-
-        resp, title = await build_response(
-            req,
-            config,
-            url_config,
-            cache,
-            rsc_ctype,
-            data,
-            gemini_server_host=config.hostname,
-            domain=domain,
-            is_cached=cached is not None,
-            req_path=path
-        )
-
-        log_request(access_log_doc, req, reqd, resp, url_config,
-                    title=title)
-
-        access_log_doc._scount += 1
-
-        return resp
+            return await error_response(
+                req, f'Route not found: {req.url.path}',
+                status=Status.NOT_FOUND
+            )
 
     async def handle_request_proxy_mode(req: Request) -> Response:
         """

@@ -11,6 +11,8 @@ import omegacli
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from daemonize import Daemonize
+from aiogemini import GEMINI_PORT
+from yarl import URL
 
 from levior import crawler
 from levior import __version__
@@ -310,10 +312,18 @@ def run():
                 download_chromium()
 
         def daemon_run():
+            access_url = URL.build(
+                scheme='gemini',
+                host=config.hostname,
+                port=config.port if config.port != GEMINI_PORT else None
+            )
+
             logger.info(
                 f'# levior v{__version__}: listening on '
                 f'{config.hostname}:{config.port}'
             )
+
+            logger.info(f'=> {access_url}  levior interface')
 
             return loop.run_until_complete(server.serve())
 

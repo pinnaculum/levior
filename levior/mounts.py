@@ -1,6 +1,6 @@
 import re
-import sys
 import traceback
+import logging
 
 from yarl import URL
 from pathlib import Path
@@ -24,6 +24,9 @@ from .response import redirect_response
 from . import crawler
 
 
+logger = logging.getLogger()
+
+
 class ZimMountPoint:
     def __init__(self, mppath: str, source: Path, **opts):
         self.mp = mppath
@@ -37,8 +40,7 @@ class ZimMountPoint:
         try:
             assert self._zim_path.is_file()
 
-            print(f'Loading ZIM archive from: {self._zim_path}',
-                  file=sys.stderr)
+            logger.debug(f'Loading ZIM archive from: {self._zim_path}')
 
             self._zim = Archive(str(self._zim_path))
             self._searcher = Searcher(self._zim)
