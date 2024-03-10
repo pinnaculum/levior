@@ -2,11 +2,14 @@ import sys
 import asyncio
 import argparse
 import functools
+import logging
 import traceback
 import signal
 from asyncio import tasks
 
-import logging
+import omegacli
+from omegaconf import OmegaConf
+from omegaconf import DictConfig
 from daemonize import Daemonize
 
 from levior import crawler
@@ -22,7 +25,7 @@ except Exception:
     have_pyppeteer = False
 
 
-def parse_args(args: list = None):
+def parse_args(args: list = None) -> DictConfig:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-c',
@@ -117,6 +120,20 @@ def parse_args(args: list = None):
         help='Only make requests on https URLs in server mode')
 
     parser.add_argument(
+        '--page-cachelinks',
+        dest='page_cachelinks',
+        action='store_true',
+        default=False,
+        help='Show links to cache pages at the top of each page')
+
+    parser.add_argument(
+        '--page-cachelinks-maxdays',
+        dest='page_cachelinks_maxdays',
+        type=int,
+        default=7,
+        help='Number of days to generate cache links for')
+
+    parser.add_argument(
         '--js',
         '--js-render',
         dest='js_render',
@@ -148,6 +165,7 @@ def parse_args(args: list = None):
 
     parser.add_argument(
         '--feathers',
+        '--feathers-default',
         dest='feathers',
         type=int,
         default=4,
@@ -155,7 +173,8 @@ def parse_args(args: list = None):
 
     parser.add_argument(
         '--links',
-        dest='md_links',
+        '--links-mode',
+        dest='links_mode',
         type=str,
         default='paragraph',
         help='Gemini links generation mode: '
@@ -165,7 +184,7 @@ def parse_args(args: list = None):
         '--mode',
         '--modes',
         '-m',
-        dest='service_modes',
+        dest='mode',
         type=str,
         default='proxy,server',
         help='Allowed service modes (comma-separated list). '
@@ -204,7 +223,13 @@ def parse_args(args: list = None):
         default=False,
         help="Show levior's version and exit")
 
-    return parser.parse_args(args=args)
+    uargs, dargs = omegacli.OmegaConf.from_argparse(parser, args=args,
+                                                    include_none=True)
+
+    if uargs:
+        return OmegaConf.merge(uargs, dargs)
+    else:
+        return dargs
 
 
 async def stop_process(server, sig, loop) -> None:
@@ -223,9 +248,9 @@ async def stop_process(server, sig, loop) -> None:
 
 def run():
     loop = asyncio.get_event_loop()
-    args = parse_args()
+    cli_cfg = parse_args()
 
-    if args.show_version:
+    if cli_cfg.show_version:
         print(__version__)
         sys.exit(0)
 
@@ -234,7 +259,7 @@ def run():
     logger = logging.getLogger()
     logger.setLevel('DEBUG')
 
-    config, server = levior_configure_server(args)
+    config, server = levior_configure_server(cli_cfg)
 
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
         loop.add_signal_handler(

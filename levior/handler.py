@@ -84,8 +84,8 @@ def page_prepend_actions(config: DictConfig,
     forever_query[caching.query_cache_forever_key] = 'true'
 
     for ttl_day in range(1,
-                         config.get('page_cachelinks_maxdays', 14),
-                         config.get('page_cachelinks_daystep', 3)):
+                         config.get('page_cachelinks_maxdays'),
+                         config.get('page_cachelinks_daystep', 2)):
         orig_query = dict(url.query)
         orig_query[caching.query_cachettl_key] = str(86400 * ttl_day)
 
@@ -228,7 +228,8 @@ async def build_response(req: Request,
             )
 
         # Prepend the cache links if this page is not cached
-        if not is_cached and config.get('page_cachelinks_show', False) is True:
+        if not is_cached and (config.get('page_cachelinks', False) or
+                              config.get('page_cachelinks_show', False)):
             gemtext = page_prepend_actions(config, gemtext, req.url)
 
         if url_cache:

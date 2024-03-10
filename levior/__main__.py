@@ -116,50 +116,19 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
     return file_cfg, rules
 
 
-def get_config(args) -> DictConfig:
+def get_config(cli_cfg: DictConfig) -> DictConfig:
     rules: list = []
-
-    config = OmegaConf.create({
-        'gemini_cert': args.gemini_cert,
-        'gemini_key': args.gemini_key,
-
-        'daemonize': args.daemonize,
-        'pid_file_path': args.pid_file_path,
-        'https_only': args.https_only,
-        'mode': args.service_modes,
-        'hostname': args.hostname,
-        'port': args.port,
-        'log_file_path': args.log_file_path,
-        'cache_path': args.cache_path,
-        'cache_enable': args.cache_enable,
-        'cache_ttl_default': args.cache_ttl_default,
-        'cache_size_limit': args.cache_size_limit,
-        'cache_eviction_policy': args.cache_eviction_policy,
-        'verify_ssl': args.verify_ssl,
-        'socks5_proxy': args.socks5_proxy,
-        'tor': args.tor,
-        'links_mode': args.md_links,
-        'feathers_default': args.feathers,
-
-        'js_render': args.js_render,
-        'js_render_always': args.js_render_always,
-
-        'urules': [{
-            'regex': r'.*',
-            'cache': args.cache_enable,
-            'ttl': args.cache_ttl_default
-        }]
-    })
-
-    cfgp = Path(args.config_path) if args.config_path else None
+    cfgp = Path(cli_cfg.config_path) if cli_cfg.config_path else None
 
     if cfgp and cfgp.is_file():
         try:
-            file_cfg, rules = load_config_file(args.config_path)
+            file_cfg, rules = load_config_file(cli_cfg.config_path)
 
-            config = OmegaConf.merge(config, file_cfg)
+            config = OmegaConf.merge(cli_cfg, file_cfg)
         except Exception as err:
             raise err
+    else:
+        config = cli_cfg
 
     rules = sorted(
         rules, key=lambda rule: rule.config.get('priority', 1000)
@@ -168,13 +137,13 @@ def get_config(args) -> DictConfig:
     return config, rules
 
 
-def levior_configure_server(args) -> Tuple[DictConfig, Server]:
+def levior_configure_server(cli_cfg) -> Tuple[DictConfig, Server]:
     """
     Create a levior server from the command-line config arguments
     or by using a YAML config file.
     """
 
-    config, rules = get_config(args)
+    config, rules = get_config(cli_cfg)
 
     data_dir: Path = Path(appdirs.user_data_dir(__appname__))  # noqa
     try:

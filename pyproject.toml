@@ -35,6 +35,7 @@ dependencies = [
     "md2gemini @ git+https://github.com/pinnaculum/md2gemini", # egg=md2gemini
     "multidict<5.0,>=4.5",
     "omegaconf==2.3.0",
+    "omegaconf-argparse==1.0.1",
     "trimgmi==0.3.0",
     "python-dateutil>=2.8.0",
 ]
