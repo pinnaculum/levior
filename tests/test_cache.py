@@ -1,4 +1,6 @@
+import asyncio
 import pytest
+import os.path
 
 from freezegun import freeze_time
 
@@ -6,8 +8,6 @@ from yarl import URL
 from omegaconf import OmegaConf
 from trimgmi import Document as GmiDocument
 
-from levior.caching import cache_access_log
-from levior.caching import load_cached_access_log
 from levior import caching
 
 
@@ -21,6 +21,17 @@ def cache(tmpdir):
 
 
 class TestCaching:
+    def test_configure_cache(self):
+        cache = caching.configure_cache(OmegaConf.create({
+            'cache_eviction_policy': 'invalid',
+            'cache_path': None,
+            'cache_size_limit': 0
+        }))
+        assert cache.eviction_policy == 'least-recently-stored'
+        assert cache.directory == caching.default_cache_dir()
+        assert cache.size_limit == caching.default_size_limit_mb * 1024 * 1024
+        assert os.path.isdir(cache.directory)
+
     @pytest.mark.parametrize('url', [
         URL('https://example.org/hello#frag1'),
         URL('https://me:pass@example.org/hello?test=1')
@@ -37,6 +48,11 @@ class TestCaching:
         URL('https://docs.aiohttp.org/index.html#fragment')
     ])
     def test_cache_resource(self, cache, url):
+        with pytest.raises(ValueError):
+            caching.cache_resource(
+                cache, str(url), 'text/plain', 'Hello'
+            )
+
         with freeze_time("2024-02-14 12:00:00") as ft:
             assert caching.cache_resource(
                 cache, url, 'text/plain', 'Hello',
@@ -68,7 +84,16 @@ class TestCaching:
         log.append('=> / Test')
         log.append('=> /doc Doc')
 
-        assert cache_access_log(cache, log) is True
+        assert caching.cache_access_log(cache, log) is True
 
-        clog = load_cached_access_log(cache)
+        clog = caching.load_cached_access_log(cache)
         assert len(clog._lines) == 2
+
+    @pytest.mark.asyncio
+    async def test_persist_task(self, cache):
+        doc = GmiDocument()
+        doc._scount = 1
+        asyncio.create_task(
+            caching.cache_persist_task(cache, doc)
+        )
+        await asyncio.sleep(5)

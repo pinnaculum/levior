@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Union
+
+import tempfile
 import hashlib
 import pytest
 import asyncio
@@ -11,6 +14,7 @@ from omegaconf import OmegaConf
 from md2gemini import md2gemini
 
 from levior import default_cert_paths
+from levior import caching
 from levior.handler import server_geminize_url
 from levior.crawler import PageConverter
 from levior.entrypoint import parse_args
@@ -24,6 +28,7 @@ from aiogemini.client.protocol import Request
 from aiogemini.client.protocol import Protocol
 
 from trimgmi import LineType
+from trimgmi import Document
 
 
 @dataclass
@@ -49,10 +54,13 @@ class LeviorClient(Client):
         return await self.send_request(Request(url=req_url))
 
     async def proxy_request(self,
-                            requrl: URL,
+                            requrl: Union[URL, str],
                             proxy: tuple = ('localhost', 1965)):
         loop = asyncio.get_running_loop()
-        protocol = Protocol(Request(url=URL(requrl)), loop=loop)
+        protocol = Protocol(
+            Request(url=URL(requrl) if isinstance(requrl, str) else requrl),
+            loop=loop
+        )
 
         await loop.create_connection(
             lambda: protocol,
@@ -62,6 +70,21 @@ class LeviorClient(Client):
         )
         resp = await protocol.response
         return resp, await resp.read()
+
+    async def proxy_request_gmidoc(self,
+                                   requrl: Union[URL, str],
+                                   proxy: tuple = ('localhost', 1965)):
+        doc = Document()
+        resp, data = await self.proxy_request(requrl, proxy)
+        [doc.append(line) for line in data.decode().splitlines()]
+        return resp, doc
+
+    async def request_gmidoc(self, requrl: URL):
+        doc = Document()
+        resp = await self.send_request(Request(url=requrl))
+        data = await resp.read()
+        [doc.append(line) for line in data.decode().splitlines()]
+        return resp, doc
 
 
 def pythonclock_rw(fctx):
@@ -135,6 +158,11 @@ def proxy_mode_args():
     return parse_args(['--mode=proxy'])
 
 
+def mixed_mode_cachelinks_args():
+    return parse_args(['--mode=proxy,server', '--page-cachelinks',
+                       f'--cache-path={tempfile.mkdtemp()}'])
+
+
 def mixed_mode_args():
     return parse_args(['--mode=proxy,server'])
 
@@ -157,6 +185,13 @@ async def server():
 async def proxy_server():
     f, config, srv = await service_with_args(proxy_mode_args())
     assert config.mode == 'proxy'
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def mixed_server_with_cachelinks():
+    f, config, srv = await service_with_args(mixed_mode_cachelinks_args())
     yield srv
     f.cancel()
 
@@ -329,6 +364,36 @@ class TestLeviorModes:
         assert resp.status == Status.PROXY_REQUEST_REFUSED
 
     @pytest.mark.asyncio
+    async def test_cachelinks(self,
+                              mixed_server_with_cachelinks,
+                              client):
+        # Test that the cache links are added at the beginning of the page
+        url = URL('https://docs.python.org/3/library/index.html')
+
+        resp, doc = await client.proxy_request_gmidoc(url)
+        line0 = doc._lines[0]
+        assert line0.type == LineType.LINK
+        assert line0.text.startswith('Cache this page for')
+
+        # Cache it
+        resp, doc = await client.proxy_request_gmidoc(url.with_query(
+            {caching.query_cache_forever_key: 'true'})
+        )
+
+        # Once it's cached, the cache links shouldn't be shown
+        resp, doc = await client.proxy_request_gmidoc(url)
+        assert not doc._lines[0].text.startswith('Cache this page for')
+
+        # List the cache entries and check that the page was cached
+        resp, doc = await client.request_gmidoc(
+            URL('gemini://localhost/cache')
+        )
+
+        for line in doc.emit_line_objects():
+            if line.type == LineType.LINK:
+                assert line.extra == str(url)
+
+    @pytest.mark.asyncio
     async def test_mixed_mode(self, mixed_server, client):
         """
         Verify that in the proxy+server mode, both types of requests are
@@ -347,7 +412,7 @@ class TestLeviorModes:
         os.getenv("LEVIOR_PYTEST_IPFS") is None,
         reason="Not testing IPFS proxying in this environment"
     )
-    async def test_proxy_ipfs(self, proxy_server, client):
+    async def test_proxy_ipfs(self, proxy_server, client):  # pragma: no cover
         # Fetch some IPFS file and verify the checksum
         h = hashlib.sha256()
         resp, data = await client.proxy_request(

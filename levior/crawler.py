@@ -15,7 +15,7 @@ try:
     from requests_html import HTML
     from requests_html import AsyncHTMLSession
     have_rhtml = True
-except Exception:
+except Exception:  # pragma: no cover
     have_rhtml = False
 
 rhtml_session = None
@@ -49,14 +49,14 @@ async def fetch(url: URL,
 
     headers = {
         'User-Agent': user_agent if user_agent else user_agent_default
-    }
+    }  # pragma: no cover
 
-    if socks_proxy_url:
+    if socks_proxy_url:  # pragma: no cover
         connector = ProxyConnector.from_url(socks_proxy_url)
-    else:
+    else:  # pragma: no cover
         connector = None
 
-    if url.scheme in ['ipfs', 'ipns']:
+    if url.scheme in ['ipfs', 'ipns']:  # pragma: no cover
         # ipfs URL. Route through dweb.link's HTTP gateway
 
         url = URL.build(
@@ -143,7 +143,7 @@ class BaseConverter(MarkdownConverter):
         return ''
 
 
-class ZimConverter(BaseConverter):
+class ZimConverter(BaseConverter):  # pragma: no cover
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.mp = kw.pop('mountp', '/')

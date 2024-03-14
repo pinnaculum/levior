@@ -79,9 +79,22 @@ levior --socks5-proxy "socks5://localhost:9050"
 levior --tor
 ```
 
+### Generating a new configuration file
+
+```sh
+levior --config-gen levior.yaml
+levior -c levior.yaml
+```
+
 ## Daemonization
 
-Use **--daemon** or **-d** to run levior as a daemon.
+Use **--daemon** or **-d** to run levior as a daemon, or set the
+*daemonize* setting in the config file:
+
+```yaml hl_lines="1"
+daemonize: true
+pid_file_path: levior.pid
+```
 
 ## Logging
 
@@ -439,6 +452,10 @@ gemini://localhost/gitlab.com/cipres/levior
 ### /access_log
 
 Shows the proxy's access log.
+
+### /cache
+
+Lists the objects stored in the cache.
 
 ### /search
 

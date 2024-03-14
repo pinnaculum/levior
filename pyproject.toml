@@ -71,3 +71,8 @@ levior = [
 
 [tool.setuptools.dynamic]
 version = {attr = "levior.__version__"}
+
+[tool.coverage.run]
+omit = [
+    "levior/filters/*.py"
+]

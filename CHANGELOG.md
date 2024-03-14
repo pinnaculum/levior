@@ -8,6 +8,7 @@
   (for a certain period of time or forever)
 - Server route to list cache entries
 - CI: Use pytest-cov and freezegun for unit tests
+- Command-line argument to generate a fresh config file: --config-gen
 
 ## [1.3.1] - 2024-03-03
 

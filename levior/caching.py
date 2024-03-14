@@ -32,15 +32,25 @@ global_access_log_key: str = 'main_access_log'
 # Tag for access log cache entries
 access_log_tag: str = 'access_log'
 
+# Default cache size limit (in megabytes)
+default_size_limit_mb: int = 2048
+
 
 def humanize_seconds(seconds: int) -> str:
     return str(timedelta(seconds=seconds))
 
 
+def default_cache_dir() -> str:
+    return appdirs.user_cache_dir(__appname__)
+
+
+def mbtobytes(size: Union[int, float]) -> float:
+    return size * 1024 * 1024
+
+
 def configure_cache(config: DictConfig) -> diskcache.Cache:
     cache_dir: Path = Path(
-        config.cache_path if config.cache_path else
-        appdirs.user_cache_dir(__appname__)
+        config.cache_path if config.cache_path else default_cache_dir()
     )
 
     if not cache_dir.exists():
@@ -58,12 +68,12 @@ def configure_cache(config: DictConfig) -> diskcache.Cache:
        config.cache_size_limit > 0:
         size_limit_mb = config.cache_size_limit
     else:
-        size_limit_mb = 2048
+        size_limit_mb = default_size_limit_mb
 
     return diskcache.Cache(
         str(cache_dir),
         eviction_policy=cpolicy,
-        size_limit=size_limit_mb * 1024 * 1024
+        size_limit=mbtobytes(size_limit_mb)
     )
 
 
@@ -85,31 +95,29 @@ def cache_resource(cache: diskcache.Cache,
     """
     Cache the content associated with a URL
     """
-    try:
-        lifetime = None
-        cache_key: str = cache_key_for_url(url)
+    lifetime = None
 
-        if isinstance(ttl, (int, float)):
-            if ttl >= 0:
-                lifetime = int(ttl)
-            elif ttl < 0:
-                # Negative ttl = never lifetime
-                lifetime = None
+    if not isinstance(url, URL):
+        raise ValueError('Invalid url parameter')
 
-        cache.set(cache_key,
-                  (ctype, data, None),
-                  expire=lifetime, retry=True)
+    cache_key: str = cache_key_for_url(url)
 
-        if lifetime is None:
-            logger.info(f'{cache_key}: cached forever')
-        else:
-            logger.info(
-                f'{cache_key}: cached for {humanize_seconds(lifetime)}')
+    if isinstance(ttl, (int, float)):
+        if ttl >= 0:
+            lifetime = int(ttl)
+        elif ttl < 0:
+            # Negative ttl = never lifetime
+            lifetime = None
 
-        return True
-    except Exception:
-        traceback.print_exc()
-        return False
+    if lifetime is None:
+        logger.info(f'{cache_key}: cached forever')
+    else:
+        logger.info(
+            f'{cache_key}: cached for {humanize_seconds(lifetime)}')
+
+    return cache.set(cache_key,
+                     (ctype, data, None),
+                     expire=lifetime, retry=True)
 
 
 def cache_update_expiration(cache: diskcache.Cache,
@@ -137,15 +145,12 @@ def cache_access_log(cache: diskcache.Cache,
     key: str = key if key else global_access_log_key
     fd = BytesIO()
 
-    try:
-        for line in access_log.emit_trim_gmi():
-            fd.write(f'{line}\n'.encode())
+    for line in access_log.emit_trim_gmi():
+        fd.write(f'{line}\n'.encode())
 
-        fd.seek(0, 0)  # needed
+    fd.seek(0, 0)  # needed
 
-        return cache.set(key, fd, tag=access_log_tag, expire=expire, read=True)
-    except Exception:
-        traceback.print_exc()
+    return cache.set(key, fd, tag=access_log_tag, expire=expire, read=True)
 
 
 def load_cached_access_log(cache: diskcache.Cache,
@@ -166,9 +171,9 @@ def load_cached_access_log(cache: diskcache.Cache,
             doc.append(lineb.decode())
 
         return doc
-    except (diskcache.Timeout, AssertionError):
+    except (diskcache.Timeout, AssertionError):  # pragma: no cover
         return GmiDocument()
-    except Exception:
+    except BaseException:  # pragma: no cover
         traceback.print_exc()
         return None
 

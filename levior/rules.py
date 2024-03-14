@@ -27,7 +27,7 @@ def instantiate_rule(urlc: DictConfig) -> URLRule:
         regs = list(urlre)
     elif isinstance(urlre, str):
         regs = [urlre]
-    else:
+    else:  # pragma: no cover
         return None
 
     return URLRule(
@@ -50,7 +50,7 @@ def parse_rules(config: DictConfig) -> List[URLRule]:
         if not rem:
             continue
 
-        if not isinstance(obj, ListConfig):
+        if not isinstance(obj, ListConfig):  # pragma: no cover
             continue
 
         prefix = rem.group('prefix')  # noqa
