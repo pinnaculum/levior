@@ -15,7 +15,7 @@ def get_req_ipaddr(req: Request) -> IP:
     try:
         peer = req.transport.get_extra_info('peername')
         return IP(peer[0])
-    except BaseException:
+    except BaseException:  # pragma: no cover
         return None
 
 
@@ -43,7 +43,7 @@ def log_request(access_log: GmiDocument,
     else:
         gemline += str(req.url)
 
-    gemline += f'({client_ip}, status: {resp.status.value}, '
+    gemline += f' (origin: {client_ip}, status: {resp.status.value}, '
     gemline += f'ctype: {resp.content_type})'
 
     access_log.append(gemline)

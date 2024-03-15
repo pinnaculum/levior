@@ -20,7 +20,7 @@ try:
     from pyppeteer.chromium_downloader import (check_chromium,
                                                download_chromium)
     have_pyppeteer = True
-except Exception:
+except Exception:  # pragma: no cover
     traceback.print_exc()
     have_pyppeteer = False
 
@@ -103,6 +103,13 @@ parser.add_argument(
     help='Cache items eviction policy '
     '(least-recently-stored, least-recently-used, '
     'least-frequently-used, none)')
+
+parser.add_argument(
+    '--persist-access-log',
+    dest='persist_access_log',
+    action='store_true',
+    default=False,
+    help='Persist the access log in the cache')
 
 parser.add_argument(
     '--https-only',

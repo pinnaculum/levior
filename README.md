@@ -57,8 +57,8 @@ pip install '.[js]'
 ## Usage
 
 *levior* can be configured from the command-line or via a *YAML* config file
-(if a config file is provided, settings from both sources are merged to create
-a unique config, with the config file settings taking precedence).
+If a config file is provided, settings from both sources are merged to create
+a unique config, with the config file settings taking precedence.
 See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.yaml). URL rules can only be configured with a config file.
 
 levior uses the [OmegaConf library](https://omegaconf.readthedocs.io) to
@@ -179,6 +179,15 @@ rules:
   - url: '^https?://www.thingstokeep.org'
     cache: true
     ttl: 86400
+```
+
+#### Caching the access log
+
+The access log can be persisted in the cache via the *persist_access_log*
+setting (or with **--persist-access-log**). This is disabled by default.
+
+```yaml
+persist_access_log: true
 ```
 
 #### Caching links on pages

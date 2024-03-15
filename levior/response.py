@@ -4,7 +4,7 @@ from aiogemini.server import Request, Response
 
 
 def data_response_init(req, content_type=GEMINI_MEDIA_TYPE,
-                       status=Status.SUCCESS) -> Response:
+                       status=Status.SUCCESS) -> Response:  # pragma: no cover
     response = Response()
     response.content_type = content_type
     response.status = status
@@ -62,8 +62,9 @@ async def proxy_reqrefused_response(req, message: str) -> Response:
     )
 
 
-async def http_crawler_error_response(req: Request,
-                                      http_status: int) -> Response:
+async def http_crawler_error_response(
+        req: Request,
+        http_status: int) -> Response:  # pragma: no cover
     status: Status = Status.TEMPORARY_FAILURE
 
     if http_status == 400:
@@ -87,7 +88,8 @@ async def http_crawler_error_response(req: Request,
     )
 
 
-async def markdownification_error(req, url):
+async def markdownification_error(req: Request,
+                                  url: URL) -> Response:  # pragma: no cover
     return await error_response(
         req,
         f'Markdownification of {url} failed'

@@ -26,7 +26,7 @@ from .handler import create_levior_handler
 from .rules import parse_rules
 
 
-try:
+try:  # pragma: no cover
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except Exception:
@@ -65,7 +65,7 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
             if isinstance(inc, DictConfig):
                 iref = inc.get('src')
                 iparams = inc.get('with')
-            elif isinstance(inc, str):
+            elif isinstance(inc, str):  # pragma: no cover
                 iref, iparams = inc, None
 
             if isinstance(iparams, DictConfig) and 0:
@@ -74,7 +74,7 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
                     if isinstance(val, (str, int, float)):
                         os.environ[f'LEV_{key}'] = str(val)
 
-            if not isinstance(iref, str):
+            if not isinstance(iref, str):  # pragma: no cover
                 continue
 
             if ':' in iref:
@@ -148,11 +148,11 @@ def levior_configure_server(cli_cfg) -> Tuple[DictConfig, Server]:
     data_dir: Path = Path(appdirs.user_data_dir(__appname__))  # noqa
     try:
         for mode in config.mode.split(','):
-            if not mode:
+            if not mode:  # pragma: no cover
                 continue
 
             assert mode.strip() in ['server', 'proxy', 'http-proxy']
-    except AssertionError:
+    except AssertionError:  # pragma: no cover
         raise ValueError(f'Invalid modes config: {config.mode}')
 
     if config.get('gemini_cert') and config.get('gemini_key'):

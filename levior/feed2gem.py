@@ -6,8 +6,12 @@ from yarl import URL
 import feedparser
 import traceback
 import io
+import logging
 
 import dateutil.parser
+
+
+logger = logging.getLogger()
 
 
 class FeedNotModified(Exception):
@@ -17,8 +21,8 @@ class FeedNotModified(Exception):
 def feed_fromdata(data: str):
     try:
         return feedparser.parse(data)
-    except Exception:
-        traceback.print_exc()
+    except Exception:  # pragma: no cover
+        logger.debug(traceback.format_exc())
         return None
 
 
@@ -30,7 +34,7 @@ async def feed_fromurl(url: URL,
                        verify_ssl: bool = True) -> tuple:
     headers: dict = {}
 
-    if socks_proxy_url:
+    if isinstance(socks_proxy_url, str):  # pragma: no cover
         connector = ProxyConnector.from_url(socks_proxy_url)
     else:
         connector = None
@@ -69,7 +73,7 @@ def feed2tinylog(data: str) -> str:
     buff = io.StringIO()
 
     f = feed_fromdata(data)
-    if not f:
+    if not f:  # pragma: no cover
         return None
 
     buff.write(f'# {f.feed.title}\n')
@@ -84,17 +88,18 @@ def feed2tinylog(data: str) -> str:
         try:
             if hasattr(fe, 'published'):
                 buff.write(f'## {fe.published}\n')
-            elif hasattr(fe, 'updated'):
+            elif hasattr(fe, 'updated'):  # pragma: no cover
                 buff.write(f'## {fe.updated}\n')
 
             buff.write(f'=> {fe.link} {fe.title}\n')
 
             for lnk in fe.links:
-                if lnk.get('href') != fe.link:
+                if lnk.get('href') != fe.link:  # pragma: no cover
                     buff.write(f'=> {lnk.href} {lnk.href}\n')
 
             buff.write('\n')
-        except Exception:
+        except BaseException:  # pragma: no cover
+            logger.debug(traceback.format_exc())
             continue
 
     return buff.getvalue()
@@ -109,7 +114,7 @@ def feeds2tinylog(feeds: list, sort_mode: str = 'date') -> str:
 
     buff = io.StringIO()
 
-    def fentry_date(entry):
+    def fentry_date(entry):  # pragma: no cover
         if 'updated' in entry:
             return dateutil.parser.parse(entry['updated'])
         elif 'published' in entry:
@@ -124,7 +129,7 @@ def feeds2tinylog(feeds: list, sort_mode: str = 'date') -> str:
         ftitle = feedo.feed_config.get('title', feedo.feed.title)
         fdate = fentry_date(fe)
 
-        if not fdate:
+        if not fdate:  # pragma: no cover
             continue
 
         fday = fdate.strftime('%d/%m/%Y')
@@ -158,7 +163,8 @@ def feeds2tinylog(feeds: list, sort_mode: str = 'date') -> str:
                         buff.write(f'=> {lnk.href} {lnk.href}\n')
 
             buff.write('\n')
-        except Exception:
+        except BaseException:  # pragma: no cover
+            logger.debug(traceback.format_exc())
             continue
 
     return buff.getvalue()

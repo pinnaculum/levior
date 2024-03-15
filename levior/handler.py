@@ -276,7 +276,7 @@ async def build_cache_listing(req: Request,
                 gemtext += f'(expires: {exp_dt})\n'
             else:
                 gemtext += '(no expiration date)\n'
-        except BaseException:
+        except BaseException:  # pragma: no cover
             continue
 
     return await data_response(req, gemtext.encode(), 'text/gemini')
@@ -299,7 +299,7 @@ async def feeds_aggregate(req: Request,
         # corresponding to this index will be shown
         feed_only_idx: int = int(list(req.url.query.keys()).pop(0)) if \
             req.url.query else -1
-    except (ValueError, TypeError):
+    except (ValueError, TypeError):  # pragma: no cover
         feed_only_idx = -1
 
     for feed_idx, (feed_url, feed_config) in enumerate(feeds_config.items()):
@@ -360,7 +360,7 @@ async def feeds_aggregate(req: Request,
                 feeds.append(feed)
 
             continue
-        except BaseException:
+        except BaseException:  # pragma: no cover
             traceback.print_exc()
 
     try:
@@ -370,12 +370,12 @@ async def feeds_aggregate(req: Request,
         return await data_response(req, gemtext.encode(), 'text/gemini')
     except AssertionError:
         return await error_response(req, 'No valid feeds were found')
-    except BaseException:
+    except BaseException:  # pragma: no cover
         return await error_response(req, 'Failed to aggregate feeds')
 
 
 def server_geminize_url(config: DictConfig, url: URL) -> str:
-    if url.scheme == 'gemini':
+    if url.scheme == 'gemini':  # pragma: no cover
         return url
 
     return URL.build(
@@ -426,7 +426,7 @@ def create_levior_handler(config: DictConfig,
     access_log_doc: GmiDocument = access_log if access_log else GmiDocument()
     access_log_doc._scount = 0
 
-    if config.get('cache_access_log', False) is True:
+    if config.get('persist_access_log', False) is True:
         loop.create_task(caching.cache_persist_task(cache, access_log_doc))
 
     ipfilter_allow: list = [

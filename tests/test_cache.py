@@ -84,7 +84,7 @@ class TestCaching:
         log.append('=> / Test')
         log.append('=> /doc Doc')
 
-        assert caching.cache_access_log(cache, log) is True
+        assert caching.persist_access_log(cache, log) is True
 
         clog = caching.load_cached_access_log(cache)
         assert len(clog._lines) == 2

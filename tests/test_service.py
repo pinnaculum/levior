@@ -125,6 +125,8 @@ def config_with_filters(tmpdir):
 @pytest.fixture
 def config_with_includes(tmpdir):
     cfg = OmegaConf.create({
+        'persist_access_log': True,
+        'access_log_endpoint': True,
         'include': [
             {
                 'src': 'levior:puretext',
@@ -132,6 +134,14 @@ def config_with_includes(tmpdir):
                     'URL': [
                         'https://searx.be'
                     ]
+                }
+            },
+            {
+                'src': 'levior:sites/francetvinfo',
+                'with': {
+                    'feeds': {
+                        'sports': True
+                    }
                 }
             }
         ]
@@ -209,6 +219,15 @@ async def proxy_server_with_filters(config_with_filters):
 async def proxy_server_with_includes(config_with_includes):
     f, config, srv = await service_with_args(
         parse_args(['--mode=proxy', '-c', str(config_with_includes)])
+    )
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def mixed_server_with_includes(config_with_includes):
+    f, config, srv = await service_with_args(
+        parse_args(['-c', str(config_with_includes)])
     )
     yield srv
     f.cancel()
@@ -363,6 +382,11 @@ class TestLeviorModes:
             Request(url=URL('gemini://localhost')))
         assert resp.status == Status.PROXY_REQUEST_REFUSED
 
+        # Test 404
+        resp, data = await client.proxy_request(
+            'https://docs.aiohttp.org/404willneverbefound.html')
+        assert resp.status == Status.NOT_FOUND
+
     @pytest.mark.asyncio
     async def test_cachelinks(self,
                               mixed_server_with_cachelinks,
@@ -392,6 +416,15 @@ class TestLeviorModes:
         for line in doc.emit_line_objects():
             if line.type == LineType.LINK:
                 assert line.extra == str(url)
+
+        url2 = URL('https://docs.python.org/3/library/importlib.html')
+        resp, doc = await client.proxy_request_gmidoc(url2.with_query(
+            {caching.query_cachettl_key: str(86400)}
+        ))
+        resp, doc = await client.request_gmidoc(
+            URL('gemini://localhost/cache')
+        )
+        assert resp.status == Status.SUCCESS
 
     @pytest.mark.asyncio
     async def test_mixed_mode(self, mixed_server, client):
@@ -428,6 +461,29 @@ class TestLeviorModes:
     async def test_proxy_feed(self, proxy_server, client):
         resp, data = await client.proxy_request('https://openrss.org/rss')
         assert resp.content_type.startswith('text/gemini')
+
+
+class TestFeedsAggregation:
+    @pytest.mark.asyncio
+    async def test_feeds_aggregation(self, mixed_server_with_includes, client):
+        feed_url = URL('gemini://localhost/ftvinfo')
+
+        for x in range(0, 2):
+            resp, doc = await client.request_gmidoc(feed_url)
+
+            assert resp.status == Status.SUCCESS
+            assert len(doc._lines) > 0
+
+        # Requesting a specific feed by id (fails because nonexistent)
+        resp, doc = await client.request_gmidoc(feed_url.with_query('50'))
+        assert resp.status == Status.TEMPORARY_FAILURE
+
+        # Request the access log
+        resp, doc = await client.request_gmidoc(
+            URL('gemini://localhost/access_log')
+        )
+        assert resp.status == Status.SUCCESS
+        assert doc._lines[0].text == 'Access log'
 
 
 class TestGemtextFilters:

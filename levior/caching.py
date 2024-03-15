@@ -130,10 +130,10 @@ def cache_update_expiration(cache: diskcache.Cache,
     return cache.touch(cache_key_for_url(url), expire=ttl)
 
 
-def cache_access_log(cache: diskcache.Cache,
-                     access_log: GmiDocument,
-                     key: str = None,
-                     expire: float = None) -> bool:
+def persist_access_log(cache: diskcache.Cache,
+                       access_log: GmiDocument,
+                       key: str = None,
+                       expire: float = None) -> bool:
     """
     Cache this access log in the diskcache
 
@@ -184,6 +184,6 @@ async def cache_persist_task(cache: diskcache.Cache,
         await asyncio.sleep(3)
 
         if access_log._scount > 0:
-            cache_access_log(cache, access_log)
+            persist_access_log(cache, access_log)
 
             access_log._scount = 0
