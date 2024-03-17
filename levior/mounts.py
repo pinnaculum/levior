@@ -1,6 +1,8 @@
 import re
 import sys
 import traceback
+
+from yarl import URL
 from pathlib import Path
 from aiogemini.server import Request, Response
 from md2gemini import md2gemini
@@ -8,7 +10,7 @@ from md2gemini import md2gemini
 try:
     from libzim.reader import Archive
     from libzim.search import Query, Searcher
-except ImportError:
+except ImportError:  # pragma: no cover
     have_zim = False
 else:
     have_zim = True
@@ -69,6 +71,14 @@ class ZimMountPoint:
             )
 
     async def handle_request(self, req: Request, config) -> Response:
+        # The URL of the zim mountpoint on the levior gemini server
+        mountp_url = URL.build(
+            scheme='gemini',
+            host=config.hostname,
+            port=config.port if config.port != 1965 else None,
+            path=self.mp
+        )
+
         raw_path = re.sub(self.mp, '', req.url.path)
         path = req.url.path.lstrip(self.mp)
 
@@ -85,19 +95,20 @@ class ZimMountPoint:
                 )
         elif not path:
             try:
-                path = self._zim.main_entry.get_item().path
+                # Redirect to the main entry
                 return await redirect_response(
-                    req, f'gemini://{config.hostname}/{self.mp}/{path}')
-            except Exception:
+                    req, mountp_url.joinpath(
+                        self._zim.main_entry.get_item().path
+                    )
+                )
+            except Exception:  # pragma: no cover
                 return await error_response(
                     req,
                     'No main entry found in the ZIM archive'
                 )
 
-        try:
-            entry = self._zim.get_entry_by_path(path)
-            assert entry, f'Entry with path {path} not found'
-        except Exception:
+        entry = self._zim.get_entry_by_path(path)
+        if not entry:
             return await error_response(req, f'{path}: Not found')
 
         conv = crawler.ZimConverter(
@@ -121,7 +132,7 @@ class ZimMountPoint:
                 plain=True
             )
 
-            if not gemtext:
+            if not gemtext:  # pragma: no cover
                 return await error_response(
                     req,
                     'Geminification resulted in an empty document'

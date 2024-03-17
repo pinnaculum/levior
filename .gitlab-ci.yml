@@ -55,18 +55,24 @@ build:
     - python3 -m pip install --upgrade pip
 
     - pip install build wheel flake8
-    - pip install '.[test]'
+    - pip install '.[zim,test]'
     - flake8 levior
 
     - python -m build
-    - pytest --cov -v -s tests
+    - pytest --cov --cov-report=term --cov-report=xml:coverage.xml -v -s tests
 
     - .gitlab/appimage-build
 
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+%)/'
   artifacts:
     paths:
       - "*.AppImage"
       - dist/*.whl
+
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 release:
   image: registry.gitlab.com/gitlab-org/release-cli

@@ -18,6 +18,9 @@ dynamic websites.
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
 
+[![pipeline status](https://gitlab.com/cipres/levior/badges/master/pipeline.svg)](https://gitlab.com/cipres/levior/-/commits/master)
+[![coverage report](https://gitlab.com/cipres/levior/badges/master/coverage.svg)](https://gitlab.com/cipres/levior/-/commits/master)
+
 ## Supporting this project
 
 If you want to support this project, you can

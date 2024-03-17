@@ -76,3 +76,7 @@ version = {attr = "levior.__version__"}
 omit = [
     "levior/filters/*.py"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-s -v"

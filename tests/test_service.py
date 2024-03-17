@@ -8,6 +8,8 @@ import pytest
 import asyncio
 import os
 import re
+import urllib
+import shutil
 
 from yarl import URL
 from omegaconf import OmegaConf
@@ -124,9 +126,22 @@ def config_with_filters(tmpdir):
 
 @pytest.fixture
 def config_with_includes(tmpdir):
+    zimp = Path(tmpdir).joinpath('alpine.zim')
+
+    with urllib.request.urlopen(
+        'https://download.kiwix.org/zim/other/alpinelinux_en_all_nopic_2023-01.zim') as response:  # noqa
+        with open(zimp, 'wb') as zim_file:
+            shutil.copyfileobj(response, zim_file)
+
     cfg = OmegaConf.create({
         'persist_access_log': True,
         'access_log_endpoint': True,
+        'mount': {
+            '/alpine': {
+                'type': 'zim',
+                'path': str(zimp)
+            }
+        },
         'include': [
             {
                 'src': 'levior:puretext',
@@ -484,6 +499,41 @@ class TestFeedsAggregation:
         )
         assert resp.status == Status.SUCCESS
         assert doc._lines[0].text == 'Access log'
+
+
+class TestZIM:
+    """
+    Test the ZIM mounting feature
+    """
+
+    @pytest.mark.asyncio
+    async def test_zim_mount(self, mixed_server_with_includes, client):
+        murl = URL('gemini://localhost/alpine')
+        # Request /alpine, which shound redirect to the main article
+        resp, doc = await client.request_gmidoc(murl)
+
+        assert resp.status == Status.REDIRECT_TEMPORARY
+        assert resp.reason == str(murl.joinpath('A/Main_Page'))
+        # assert resp.reason == 'gemini://localhost/alpine/A/Main_Page'
+
+        # Get the main article and check that it's properly rendered
+        resp, doc = await client.request_gmidoc(URL(resp.reason))
+        assert doc._lines[0].text == 'Main Page'
+
+        # Hit the search endpoint, and check that we're prompted for a query
+        resp, doc = await client.request_gmidoc(murl.joinpath('search'))
+        assert resp.status == Status.INPUT
+
+        # Search something and check the results
+        resp, doc = await client.request_gmidoc(
+            murl.joinpath('search').with_query('dualbooting')
+        )
+        assert doc._lines[0].text == 'Found 5 results for: dualbooting'
+
+        # Get the favicon and check the content type and size
+        resp = await client.send_request(Request(url=murl.joinpath('favicon')))
+        assert resp.content_type == 'image/png'
+        assert len(await resp.read()) == 3077
 
 
 class TestGemtextFilters:
