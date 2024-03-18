@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig
 import aiohttp
+import logging
 import re
+import traceback
 
 from aiohttp_socks import ProxyConnector
 
@@ -22,6 +24,9 @@ rhtml_session = None
 ctypes_html: list = ['text/html', 'application/xhtml+xml']
 user_agent_default: str = 'Mozilla/5.0 (X11; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/64.0'  # noqa
 scripts_re = re.compile(r'(?s)<(script).*?</\1>', re.MULTILINE)
+
+
+logger = logging.getLogger()
 
 
 @dataclass(frozen=True)
@@ -96,14 +101,14 @@ async def fetch(url: URL,
                         'js_render', False))
 
                     if have_rhtml and use_jsr:
-                        if rhtml_session is None:
-                            # No session yet, create one
-                            rhtml_session = AsyncHTMLSession()
-
                         jsmatch = scripts_re.search(html_text)
 
                     if have_rhtml and (jsmatch or config.js_render_always):
                         # Use requests-html to render the JS code
+
+                        if rhtml_session is None:
+                            # No session yet, create one
+                            rhtml_session = AsyncHTMLSession()
 
                         rhtml = HTML(html=html_text, session=rhtml_session)
                         await rhtml.arender()
@@ -113,6 +118,9 @@ async def fetch(url: URL,
                     return response, ctype, clength, html_text
                 except Exception:
                     # Revert to ISO-8859-1 if chardet fails
+
+                    logger.warning(traceback.format_exc())
+
                     return response, ctype, clength, \
                         await response.text('ISO-8859-1')
 

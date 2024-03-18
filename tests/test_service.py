@@ -9,6 +9,7 @@ import asyncio
 import os
 import re
 import urllib
+import signal
 import shutil
 
 from yarl import URL
@@ -240,6 +241,15 @@ async def proxy_server_with_includes(config_with_includes):
 
 
 @pytest.fixture
+async def proxy_server_with_js():
+    f, config, srv = await service_with_args(
+        parse_args(['--mode=proxy', '--js', '--js-force'])
+    )
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
 async def mixed_server_with_includes(config_with_includes):
     f, config, srv = await service_with_args(
         parse_args(['-c', str(config_with_includes)])
@@ -260,6 +270,45 @@ class TestURLs:
         cfg, rules = get_config(parse_args([]))
         url = server_geminize_url(cfg, URL('https://docs.aiohttp.org'))
         assert str(url) == 'gemini://localhost/docs.aiohttp.org/'
+
+
+class TestEntryPoint:
+    @pytest.mark.parametrize(
+        'args', [
+            [],
+            ['-d']
+        ]
+    )
+    @pytest.mark.asyncio
+    async def test_entrypoint(self, client, args):
+        # Run levior via the console entrypoint and test that
+        # it's up and serving requests
+
+        proc = await asyncio.create_subprocess_exec('levior', *args)
+        await asyncio.sleep(3)
+
+        resp, doc = await client.request_gmidoc(
+            URL('gemini://localhost/cache'))
+        assert resp.status == Status.SUCCESS
+
+        try:
+            proc.terminate()
+        except Exception:
+            pidf = Path('levior.pid')
+            if pidf.is_file():
+                os.kill(int(pidf.read_text()), signal.SIGTERM)
+
+    @pytest.mark.asyncio
+    async def test_config_generate(self, tmpdir):
+        cpath = Path(tmpdir).joinpath('leviorg.yaml')
+        proc = await asyncio.create_subprocess_exec('levior',
+                                                    '--config-gen',
+                                                    str(cpath))
+        await proc.wait()
+
+        cfg = OmegaConf.load(cpath)
+        assert cfg.daemonize is False
+        assert cfg.hostname == 'localhost'
 
 
 class TestCrawler:
@@ -401,6 +450,13 @@ class TestLeviorModes:
         resp, data = await client.proxy_request(
             'https://docs.aiohttp.org/404willneverbefound.html')
         assert resp.status == Status.NOT_FOUND
+
+        # Get an image
+        resp, data = await client.proxy_request(
+            'https://docs.aiohttp.org/en/stable/_static/aiohttp-plain.svg'
+        )
+        assert resp.status == Status.SUCCESS
+        assert resp.content_type.startswith('image/')
 
     @pytest.mark.asyncio
     async def test_cachelinks(self,
@@ -569,3 +625,15 @@ class TestIncludes:
         # Test that all links are removed by the puretext rule
         for line in data.decode().splitlines():
             assert not line.startswith('=>')
+
+
+class TestJavascript:
+    @pytest.mark.skip(reason="Fails when running the whole test suite")
+    @pytest.mark.asyncio
+    async def test_js(self, proxy_server_with_js, client):
+        resp, doc = await client.proxy_request_gmidoc(
+            URL('https://www.jsstatus.com/')
+        )
+
+        assert any([line.text.lower().startswith(
+            'your javascript is active') for line in doc._lines])

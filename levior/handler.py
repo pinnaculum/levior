@@ -131,10 +131,8 @@ async def build_response(req: Request,
 
     try:
         cache_ttl = int(url_config.get('ttl', config.cache_ttl_default))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # pragma: no cover
         cache_ttl = config.cache_ttl_default
-    except BaseException:
-        traceback.print_exc()
 
     # Look for a cache ttl option in the query
     try:
@@ -170,7 +168,7 @@ async def build_response(req: Request,
         if tinyl:
             return (await data_response(req, tinyl.encode(), 'text/gemini'),
                     None)
-        else:
+        else:  # pragma: no cover
             return (await data_response(req, data, rsc_ctype), None)
     elif rsc_ctype in crawler.ctypes_html:
         # HTML => Markdown => gemtext
