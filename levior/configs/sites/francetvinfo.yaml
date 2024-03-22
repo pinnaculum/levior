@@ -15,32 +15,32 @@ rules:
 
     feeds:
       https://www.francetvinfo.fr/politique.rss:
-        enabled: ${oc.select:feeds.politique,false}
+        enabled: ${oc.select:ftvinfo_feeds.politique,false}
 
       https://www.francetvinfo.fr/societe.rss:
-        enabled: ${oc.select:feeds.societe,false}
+        enabled: ${oc.select:ftvinfo_feeds.societe,false}
 
       https://www.francetvinfo.fr/faits-divers.rss:
-        enabled: ${oc.select:feeds.faits-divers,false}
+        enabled: ${oc.select:ftvinfo_feeds.faits-divers,false}
 
       https://www.francetvinfo.fr/titres.rss:
         show_entry_dates: true
-        enabled: ${oc.select:feeds.titres,true}
+        enabled: ${oc.select:ftvinfo_feeds.titres,true}
 
       https://www.francetvinfo.fr/monde.rss:
-        enabled: ${oc.select:feeds.monde,true}
+        enabled: ${oc.select:ftvinfo_feeds.monde,true}
 
       https://www.francetvinfo.fr/culture.rss:
-        enabled: ${oc.select:feeds.culture,true}
+        enabled: ${oc.select:ftvinfo_feeds.culture,true}
 
       https://www.francetvinfo.fr/decouverte.rss:
-        enabled: ${oc.select:feeds.decouverte,false}
+        enabled: ${oc.select:ftvinfo_feeds.decouverte,false}
 
       https://www.francetvinfo.fr/sports.rss:
-        enabled: ${oc.select:feeds.sports,false}
+        enabled: ${oc.select:ftvinfo_feeds.sports,false}
 
       https://www.francetvinfo.fr/france.rss:
-        enabled: ${oc.select:feeds.france,true}
+        enabled: ${oc.select:ftvinfo_feeds.france,true}
 
   - url: '^https?://[\\w.-]*francetvinfo.fr'
     gemtext_filters:

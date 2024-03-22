@@ -145,7 +145,7 @@ def config_with_includes(tmpdir):
         },
         'include': [
             {
-                'src': 'levior:puretext',
+                'src': 'levior:puretext.yaml',
                 'with': {
                     'URL': [
                         'https://searx.be'
@@ -153,9 +153,9 @@ def config_with_includes(tmpdir):
                 }
             },
             {
-                'src': 'levior:sites/francetvinfo',
+                'src': 'levior:sites/francetvinfo.yaml',
                 'with': {
-                    'feeds': {
+                    'ftvinfo_feeds': {
                         'sports': True
                     }
                 }
@@ -164,6 +164,29 @@ def config_with_includes(tmpdir):
     })
 
     cfgp = Path(tmpdir).joinpath('srv2_includes.yaml')
+
+    with open(cfgp, 'wt') as fd:
+        OmegaConf.save(cfg, fd)
+
+    return cfgp
+
+
+@pytest.fixture
+def config_with_includes_all(tmpdir):
+    cfg = OmegaConf.create({
+        'include': [
+            {
+                'src': 'levior:sites/*.yaml',
+                'with': {
+                    'ftvinfo_feeds': {
+                        'sports': True
+                    }
+                }
+            }
+        ]
+    })
+
+    cfgp = Path(tmpdir).joinpath('srv3_includes_all.yaml')
 
     with open(cfgp, 'wt') as fd:
         OmegaConf.save(cfg, fd)
@@ -253,6 +276,15 @@ async def proxy_server_with_js():
 async def mixed_server_with_includes(config_with_includes):
     f, config, srv = await service_with_args(
         parse_args(['-c', str(config_with_includes)])
+    )
+    yield srv
+    f.cancel()
+
+
+@pytest.fixture
+async def mixed_server_with_all_sites(config_with_includes_all):
+    f, config, srv = await service_with_args(
+        parse_args(['-c', str(config_with_includes_all)])
     )
     yield srv
     f.cancel()
@@ -657,6 +689,15 @@ class TestIncludes:
         # Test that all links are removed by the puretext rule
         for line in data.decode().splitlines():
             assert not line.startswith('=>')
+
+    @pytest.mark.asyncio
+    async def test_all_sites(self, mixed_server_with_all_sites, client):
+        for path in ['/ftvinfo', '/theguardian']:
+            resp, doc = await client.request_gmidoc(
+                URL('gemini://localhost').with_path(path)
+            )
+            assert resp.status == Status.SUCCESS
+            assert len(doc._lines) > 0
 
 
 class TestJavascript:

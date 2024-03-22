@@ -7,46 +7,46 @@ rules:
 
     feeds:
       https://www.theguardian.com/business/economics/rss:
-        enabled: ${oc.select:feeds.business.economics,false}
+        enabled: ${oc.select:theguardian_feeds.business.economics,false}
 
       https://www.theguardian.com/environment/energy/rss:
-        enabled: ${oc.select:feeds.environment.energy,false}
+        enabled: ${oc.select:theguardian_feeds.environment.energy,false}
 
       https://www.theguardian.com/environment/pollution/rss:
-        enabled: ${oc.select:feeds.environment.pollution,false}
+        enabled: ${oc.select:theguardian_feeds.environment.pollution,false}
 
       https://www.theguardian.com/global-development/rss:
-        enabled: ${oc.select:feeds.global-development,false}
+        enabled: ${oc.select:theguardian_feeds.global-development,false}
 
       https://www.theguardian.com/science/rss:
-        enabled: ${oc.select:feeds.science,false}
+        enabled: ${oc.select:theguardian_feeds.science,false}
 
       https://www.theguardian.com/world/rss:
-        enabled: ${oc.select:feeds.world,true}
+        enabled: ${oc.select:theguardian_feeds.world,true}
 
       https://www.theguardian.com/world/americas/rss:
-        enabled: ${oc.select:feeds.world.americas,false}
+        enabled: ${oc.select:theguardian_feeds.world.americas,false}
 
       https://www.theguardian.com/world/africa/rss:
-        enabled: ${oc.select:feeds.world.africa,false}
+        enabled: ${oc.select:theguardian_feeds.world.africa,false}
 
       https://www.theguardian.com/world/asia/rss:
-        enabled: ${oc.select:feeds.world.asia,false}
+        enabled: ${oc.select:theguardian_feeds.world.asia,false}
 
       https://www.theguardian.com/world/europe-news/rss:
-        enabled: ${oc.select:feeds.world.europe-news,true}
+        enabled: ${oc.select:theguardian_feeds.world.europe-news,true}
 
       https://www.theguardian.com/world/middleeast/rss:
-        enabled: ${oc.select:feeds.world.middleeast,false}
+        enabled: ${oc.select:theguardian_feeds.world.middleeast,false}
 
       https://www.theguardian.com/uk-news/rss:
-        enabled: ${oc.select:feeds.uk-news,true}
+        enabled: ${oc.select:theguardian_feeds.uk-news,true}
 
       https://www.theguardian.com/uk-technology/rss:
-        enabled: ${oc.select:feeds.uk-technology,false}
+        enabled: ${oc.select:theguardian_feeds.uk-technology,false}
 
       https://www.theguardian.com/us-news/rss:
-        enabled: ${oc.select:feeds.us-news,true}
+        enabled: ${oc.select:theguardian_feeds.us-news,true}
 
   - url: '^https?://[\w.-]*theguardian.com'
     gemtext_filters:

@@ -33,6 +33,26 @@ except Exception:
     pass
 
 
+def load_include(path: Union[Path, str],
+                 iparams: Union[DictConfig, ListConfig]) -> DictConfig:
+    cfd = StringIO()
+
+    try:
+        if iparams:
+            OmegaConf.save(config=iparams, f=cfd)
+
+        with open(path, 'rt') as f:
+            cfd.write(f.read())
+
+        cfd.seek(0, 0)
+
+        inccfg = OmegaConf.load(cfd)
+        assert isinstance(inccfg, DictConfig)
+        return inccfg
+    except BaseException:
+        traceback.print_exc()
+
+
 def load_config_file(arg: Union[Path, TextIO]) -> tuple:
     """
     Load a levior config file and returns a tuple containing the
@@ -55,18 +75,18 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
     rules += parse_rules(file_cfg)
 
     includes = file_cfg.get('include')
+    configs_root: Path = resources.files('levior') / 'configs'
 
     # Handle includes
     if isinstance(includes, ListConfig):
         for inc in file_cfg.include:
-            inccfg: DictConfig = None
             loadt: str = None
 
             if isinstance(inc, DictConfig):
-                iref = inc.get('src')
+                isrc = inc.get('src')
                 iparams = inc.get('with')
             elif isinstance(inc, str):  # pragma: no cover
-                iref, iparams = inc, None
+                isrc, iparams = inc, None
 
             if isinstance(iparams, DictConfig) and 0:
                 # Set env vars passed in 'with' (disabled for now)
@@ -74,44 +94,24 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
                     if isinstance(val, (str, int, float)):
                         os.environ[f'LEV_{key}'] = str(val)
 
-            if not isinstance(iref, str):  # pragma: no cover
+            if not isinstance(isrc, str):  # pragma: no cover
                 continue
 
-            if ':' in iref:
-                loadt, path = iref.split(':')
+            if ':' in isrc:
+                loadt, path_ref = isrc.split(':')
             else:
-                loadt, path = None, iref
-
-            cfd = StringIO()
-            if iparams:
-                OmegaConf.save(config=iparams, f=cfd)
-
-            if not path.endswith('.yaml'):
-                path += '.yaml'
+                loadt, path_ref = None, isrc
 
             if loadt in ['levior', 'lev']:
-                # Load from the builtin library
+                # Levior library
+                for glob_path in configs_root.glob(path_ref):
+                    if glob_path.name.startswith('_'):
+                        continue
 
-                rp = resources.files('levior') / 'configs'
-
-                with open(rp.joinpath(path), 'rt') as f:
-                    cfd.write(f.read())
+                    rules += parse_rules(load_include(glob_path, iparams))
             elif not loadt:
                 # Local file
-
-                with open(path, 'rt') as f:
-                    cfd.write(f.read())
-
-            cfd.seek(0, 0)
-
-            try:
-                inccfg = OmegaConf.load(cfd)
-                assert isinstance(inccfg, DictConfig)
-
-                rules += parse_rules(inccfg)
-            except Exception:
-                traceback.print_exc()
-                continue
+                rules += parse_rules(load_include(path_ref, iparams))
 
     return file_cfg, rules
 

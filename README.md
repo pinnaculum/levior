@@ -27,6 +27,9 @@ If you want to support this project, you can
 make a donation [here](https://ko-fi.com/cipres) (or
 [here](https://liberapay.com/galacteek)).
 
+You can get in touch via [misfin](https://gitlab.com/cipres/misfin)
+at the following misfin address: *cipres AT hashnix.club*.
+
 ## Installation
 
 ### AppImage
@@ -211,14 +214,22 @@ page_cachelinks: true
 
 It is also possible to load predefined rules by using the *include* keyword
 in your config file. If you prefix the path with *levior:*, it will be loaded
-from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/levior/configs) (please [open a PR](https://gitlab.com/cipres/levior/-/merge_requests/new) to submit new rules), otherwise it is assumed to be a local file. Because
-all the config files use the YAML syntax, you can omit the *.yaml* suffix
-in the filename (it will be appended automatically).
+from the builtin [rules library](https://gitlab.com/cipres/levior/-/tree/master/levior/configs) (please [open a PR](https://gitlab.com/cipres/levior/-/merge_requests/new) to submit new rules), otherwise it is assumed to be a local file.
 
 ```yaml
 include:
   - levior:sites/francetvinfo.yaml
   - my_rules.yaml
+```
+
+When you use the *levior:* prefix, you can pass a glob-style pattern,
+allowing you to source multiple files in a single include.
+
+```yaml
+include:
+  - src: levior:sites/*.yaml
+    with:
+      ...
 ```
 
 Rules can receive parameters, allowing the creation of more generic rules
@@ -251,7 +262,7 @@ The *puretext* rule keeps only the text content:
 
 ```yaml
 include:
-  - src: levior:puretext
+  - src: levior:puretext.yaml
     with:
       URL:
         - https://example.org
@@ -282,9 +293,9 @@ When you are sourcing a config file that includes aggregation rules,
 you can enable or disable certain feeds using the parameters:
 
 ```yaml hl_lines="4 5"
-  - src: levior:sites/francetvinfo
+  - src: levior:sites/francetvinfo.yaml
     with:
-      feeds:
+      ftvinfo_feeds:
         culture: true
         sports: true
 ```

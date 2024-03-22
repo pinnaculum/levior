@@ -61,6 +61,7 @@ links_mode: paragraph
 # socks5_proxy: socks5://localhost:9050
 
 # include:
+#   - levior:sites/*.yaml
 #   - levior:sites/francetvinfo.yaml
 #   - levior:sites/off-guardian.yaml
 #   - myrules.yaml

@@ -42,6 +42,10 @@ def parse_rules(config: DictConfig) -> List[URLRule]:
     """
 
     rules: list = []
+
+    if config is None:
+        return rules
+
     re_ruledef = re.compile(r'^(?P<prefix>u?)rules$')
 
     for key, obj in config.items():

@@ -4,6 +4,7 @@
 
 - Use a URL routes mapper for the server's endpoints
 - Output the server's access URL when starting
+- Make it possible to use glob-style patterns in includes
 
 ### Fixed
 
