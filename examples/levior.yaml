@@ -65,6 +65,13 @@ links_mode: paragraph
 #   - levior:sites/francetvinfo.yaml
 #   - levior:sites/off-guardian.yaml
 #   - myrules.yaml
+#
+# URL mapping
+#
+# urlmap:
+#   /searx/{query}:
+#     url: https://searx.be/search?q={query}
+
 
 # URL rules: first match wins
 # The 'feathers' option (integer between 0 and 5) controls how 'light' the

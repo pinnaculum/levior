@@ -143,6 +143,14 @@ def config_with_includes(tmpdir):
                 'path': str(zimp)
             }
         },
+        'urlmap': {
+            '/searx': {
+                'input_for': 'https://searx.be/search?q='
+            },
+            '/searx/{query}': {
+                'url': 'https://searx.be/search?q={query}'
+            },
+        },
         'include': [
             {
                 'src': 'levior:puretext.yaml',
@@ -596,6 +604,27 @@ class TestLeviorModes:
     async def test_proxy_feed(self, proxy_server, client):
         resp, data = await client.proxy_request('https://openrss.org/rss')
         assert resp.content_type.startswith('text/gemini')
+
+
+class TestURLMapping:
+    @pytest.mark.asyncio
+    async def test_urlmapping(self, mixed_server_with_includes, client):
+        resp = await client.send_request(
+            Request(url=URL('gemini://localhost/searx'))
+        )
+        assert resp.status == Status.INPUT
+
+        resp = await client.send_request(
+            Request(url=URL('gemini://localhost/searx?gemini'))
+        )
+        assert resp.status == Status.REDIRECT_TEMPORARY
+        assert resp.reason == 'https://searx.be/search?q=gemini'
+
+        resp = await client.send_request(
+            Request(url=URL('gemini://localhost/searx/test'))
+        )
+        assert resp.status == Status.REDIRECT_TEMPORARY
+        assert resp.reason == 'https://searx.be/search?q=test'
 
 
 class TestFeedsAggregation:

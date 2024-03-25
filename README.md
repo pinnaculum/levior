@@ -138,6 +138,33 @@ client_ip_allow:
   - 10.0.1.0/24
 ```
 
+## URL mapping
+
+Define *urlmap* in your config file to map specific paths (on levior's
+gemini server) to certain URLs.
+
+```yaml
+urlmap:
+  # When /searx is requested without a gemini query, it will send
+  # an input response. When the input is sent back, it will redirect the
+  # user to "https://searx.be/search?q={input}"
+
+  /searx:
+    input_for: https://searx.be/search?q=
+    route_name: Search with SearX
+
+  /liteduck:
+    input_for: https://lite.duckduckgo.com/lite/?q=
+    route_name: DuckDuckGo Lite search
+
+  # Mapping with variables in the path
+  # /z/test => https://searx.be/search?q=test
+  /z/{query}:
+    url: https://searx.be/search?q={query}
+```
+
+If you set *route_name*, the route will appear on levior's homepage.
+
 ## URL rules
 
 You can define your own rules in order to apply some processing on the gemtext

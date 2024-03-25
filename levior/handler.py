@@ -421,15 +421,17 @@ async def send_custom_reply(req: Request, cresp: DictConfig) -> Response:
     return resp
 
 
-async def srv_handler_root(route,
+async def rcontroller_root(route,
                            req: Request,
                            config: DictConfig,
                            cache: diskcache.Cache,
-                           **kwargs):
+                           **kwargs) -> Response:
     """
     Home page
     """
     mountpoints = kwargs.pop('mountpoints')
+    mapper = kwargs.pop('mapper')
+    rules = kwargs.pop('rules', [])
 
     doc = GmiDocument()
     doc.append(f'# levior v{__version__}')
@@ -441,7 +443,11 @@ async def srv_handler_root(route,
     doc.append('=> /cache  Cache')
     doc.append('=> /search Web Search')
 
-    rules = kwargs.pop('rules', [])
+    routes = [r for r in mapper.matchlist if r.name]
+    if routes:
+        doc.append('## Special routes')
+        for r in routes:
+            doc.append(f'=> {r.routepath} {r.name}')
 
     doc.append('## Feeds')
 
@@ -461,19 +467,19 @@ async def srv_handler_root(route,
     return await gmidoc_response(req, doc)
 
 
-async def srv_handler_cache(route,
+async def rcontroller_cache(route,
                             req: Request,
                             config: DictConfig,
                             cache: diskcache.Cache,
-                            **kwargs):
+                            **kwargs) -> Response:
     return await build_cache_listing(req, config, cache)
 
 
-async def srv_handler_access_log(route,
+async def rcontroller_access_log(route,
                                  req: Request,
                                  config: DictConfig,
                                  cache: diskcache.Cache,
-                                 **kwargs):
+                                 **kwargs) -> Response:
     access_log_doc = kwargs.pop('access_log_doc')
 
     data = '# Access log\n'
@@ -483,11 +489,11 @@ async def srv_handler_access_log(route,
     return await data_response(req, data.encode())
 
 
-async def srv_handler_domain_prompt(route,
+async def rcontroller_domain_prompt(route,
                                     req: Request,
                                     config: DictConfig,
                                     cache: diskcache.Cache,
-                                    **kwargs):
+                                    **kwargs) -> Response:
     if not req.url.query:
         return await input_response(
             req,
@@ -507,11 +513,11 @@ async def srv_handler_domain_prompt(route,
         )
 
 
-async def srv_handler_search(route,
+async def rcontroller_search(route,
                              req: Request,
                              config: DictConfig,
                              cache: diskcache.Cache,
-                             **kwargs):
+                             **kwargs) -> Response:
     q = list(req.url.query.keys())
     if not q:
         return await input_response(req, 'Please enter a search query')
@@ -527,11 +533,11 @@ async def srv_handler_search(route,
     )
 
 
-async def srv_handler_mountpoint(route,
+async def rcontroller_mountpoint(route,
                                  req: Request,
                                  config: DictConfig,
                                  cache: diskcache.Cache,
-                                 **kwargs):
+                                 **kwargs) -> Response:
     mountpoints = kwargs.pop('mountpoints')
 
     for mp, mount in mountpoints.items():
@@ -544,11 +550,11 @@ async def srv_handler_mountpoint(route,
     )
 
 
-async def srv_handler_domain(route,
+async def rcontroller_domain(route,
                              req: Request,
                              config: DictConfig,
                              cache: diskcache.Cache,
-                             **kwargs):
+                             **kwargs) -> Response:
     access_log_doc = kwargs.pop('access_log_doc')
     socksp_url = kwargs.pop('socksp_url')
     url_config = kwargs.pop('url_config')
@@ -622,6 +628,59 @@ async def srv_handler_domain(route,
     access_log_doc._scount += 1
 
     return resp
+
+
+async def rcontroller_feeds_aggregator(route,
+                                       req: Request,
+                                       config: DictConfig,
+                                       cache: diskcache.Cache,
+                                       **kwargs) -> Response:
+    url_config = kwargs.pop('url_config')
+
+    resp = await feeds_aggregate(req, config, cache, url_config)
+
+    log_request(kwargs.pop('access_log_doc'),
+                req, kwargs.pop('reqd'), resp, url_config)
+
+    return resp
+
+
+async def rcontroller_urlmap(route,
+                             req: Request,
+                             config: DictConfig,
+                             cache: diskcache.Cache,
+                             **kwargs) -> Response:
+    qv = list(req.url.query.keys()).pop(0) if req.url.query else None
+    input_url = URL(route['input_url']) if route['input_url'] else None
+
+    if input_url:
+        if not qv:
+            return await input_response(
+                req,
+                route.get('input', 'Input')
+            )
+
+        if input_url.query:
+            input_url = input_url.with_query(**{
+                list(input_url.query.keys()).pop(0): qv
+            })
+        else:
+            input_url = input_url.with_query(q=qv)
+
+        return await redirect_response(req, input_url)
+
+    if not route['map_url']:
+        return await error_response(
+            req, 'No URL defined in the mapping'
+        )
+
+    return await redirect_response(
+        req,
+        route['map_url'].format(**{k: v for k, v in route.items() if k not in [
+            'action', 'controller', 'map_url',
+            'input_url', 'input_prompt'
+        ]})
+    )
 
 
 def create_levior_handler(config: DictConfig,
@@ -720,6 +779,30 @@ def create_levior_handler(config: DictConfig,
                            controller='mountpoint',
                            action="mountpoint")
 
+    # Map URL routes for rules
+    for rule in rules:
+        rroute = rule.config.get('route')
+        rtype = rule.config.get('type')
+
+        if rtype in ['feed_aggregator', 'feeds_aggregator'] and \
+           isinstance(rroute, str):
+            srv_routes.connect(None, rroute,
+                               controller='feeds_aggregator',
+                               action='index')
+
+    # URL mapping routes
+    for mp, item in config.get('urlmap', {}).items():
+        if not isinstance(item, DictConfig) or not isinstance(mp, str):
+            continue
+
+        srv_routes.connect(item.get('route_name'),
+                           mp,
+                           map_url=item.get('url'),
+                           input_url=item.get('input_for'),
+                           input_prompt=item.get('input'),
+                           controller='urlmap',
+                           action="map")
+
     async def handle_request_server_mode(req: Request) -> Response:
         """
         Server mode handler
@@ -746,17 +829,12 @@ def create_levior_handler(config: DictConfig,
         if cresp:
             return await send_custom_reply(req, cresp)
 
-        rule_type = url_config.get('type')
-
-        if rule_type in ['feed_aggregator', 'feeds_aggregator']:
-            resp = await feeds_aggregate(req, config, cache, url_config)
-            log_request(access_log_doc, req, reqd, resp, url_config)
-            return resp
-
-        handler = globals().get(f'srv_handler_{ctrler}') if ctrler else None
+        handler = globals().get(f'rcontroller_{ctrler}') if ctrler else None
 
         if handler:
             return await handler(route, req, config, cache,
+                                 reqd=reqd,
+                                 mapper=srv_routes,
                                  url_config=url_config,
                                  rules=rules,
                                  mountpoints=mountpoints,

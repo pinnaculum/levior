@@ -1,5 +1,9 @@
 ## [1.3.3] - 2024-03-19
 
+### Added
+
+- Custom URL mapping routes
+
 ### Changed
 
 - Use a URL routes mapper for the server's endpoints
