@@ -26,6 +26,7 @@ from trimgmi import Document as GmiDocument
 
 from IPy import IP
 
+from . import bytes_to_humanr
 from . import crawler
 from . import feed2gem
 from . import mounts
@@ -262,7 +263,9 @@ async def build_cache_listing(req: Request,
     and its expiration time for each entry.
     """
 
-    gemtext: str = '# Cache entries\n'
+    gemtext: str = f'Cache size: {bytes_to_humanr(cache.volume())} '
+    gemtext += f'(limit: {bytes_to_humanr(cache.size_limit)})\n'
+    gemtext += '# Cache entries\n'
 
     for key in list(cache.iterkeys()):
         try:
@@ -342,11 +345,18 @@ async def feeds_aggregate(req: Request,
             if feed and feed['entries']:
                 # TODO: check that the feed can be serialized before caching it
 
-                cache.set(cache_key, {
-                    'etag': etag,
-                    'last-modified': lastm,
-                    'feed': feed
-                }, expire=cache_expire_time)
+                if 'bozo_exception' in feed:
+                    # feedparser sets the 'bozo' and 'bozo_exception' fields
+                    # when the XML is not well-formed. Remove bozo_exception
+                    # so that we can serialize the feed object
+                    del feed['bozo_exception']
+
+                with cache.transact():
+                    cache.set(cache_key, {
+                        'etag': etag,
+                        'last-modified': lastm,
+                        'feed': feed
+                    }, expire=cache_expire_time)
 
                 feed.feed_config = feed_config
                 feeds.append(feed)

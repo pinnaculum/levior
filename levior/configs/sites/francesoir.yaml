@@ -1,0 +1,37 @@
+rules:
+  - url: '^gemini://[\w\.:]+/francesoir'
+    type: 'feeds_aggregator'
+
+    route: '/francesoir'
+    title: 'France Soir'
+
+    feeds:
+      https://www.francesoir.fr/rss.xml:
+        enabled: ${oc.select:francesoir_feeds.general,true}
+
+      https://www.francesoir.fr/rss-francesoir.xml:
+        enabled: ${oc.select:francesoir_feeds.francesoir,true}
+
+      https://www.francesoir.fr/rss-societe.xml:
+        enabled: ${oc.select:francesoir_feeds.societe,true}
+
+      https://www.francesoir.fr/rss-politique.xml:
+        enabled: ${oc.select:francesoir_feeds.politique,true}
+
+      https://www.francesoir.fr/rss-culture.xml:
+        enabled: ${oc.select:francesoir_feeds.culture,true}
+
+      https://www.francesoir.fr/rss-lifestyle.xml:
+        enabled: ${oc.select:francesoir_feeds.lifestyle,false}
+
+      https://www.francesoir.fr/rss-opinions.xml:
+        enabled: ${oc.select:francesoir_feeds.opinions,false}
+
+  - url: '^https?://[\\w.-]*francesoir.fr'
+    gemtext_filters:
+      - filter: levior.filters.links:url_remove
+        urls:
+          - '^data:image'
+          - '^/'
+
+      - levior.filters:rm_bracketed_digits
