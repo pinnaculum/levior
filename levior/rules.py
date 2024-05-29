@@ -2,6 +2,7 @@ import re
 
 from dataclasses import dataclass, field
 from typing import List
+from typing import Optional
 
 from omegaconf import DictConfig
 from omegaconf import ListConfig
@@ -10,8 +11,16 @@ from omegaconf import ListConfig
 @dataclass
 class URLRule:
     regexps: list
+
+    proxy_chain: list
+    proxy_url: str = field(default=None)
+
     match_count: int = field(default=0)
     config: DictConfig = field(default=None)
+
+    # The omegaconf context config node, containing optional params like
+    # proxy, user agent, ..
+    context: DictConfig = field(default=None)
 
 
 def instantiate_rule(urlc: DictConfig) -> URLRule:
@@ -32,11 +41,15 @@ def instantiate_rule(urlc: DictConfig) -> URLRule:
 
     return URLRule(
         regexps=[re.compile(r) for r in regs],
-        config=urlc
+        config=urlc,
+        proxy_chain=[]
     )
 
 
-def parse_rules(config: DictConfig) -> List[URLRule]:
+def parse_rules(config: DictConfig,
+                context: Optional[DictConfig] = None,
+                proxy_chain: Optional[ListConfig] = None,
+                proxy_url: Optional[str] = None) -> List[URLRule]:
     """
     Parse the URL rules in a DictConfig and returns them as a list of URLRule
     """
@@ -62,7 +75,11 @@ def parse_rules(config: DictConfig) -> List[URLRule]:
         for item in obj:
             _rule = instantiate_rule(item)
 
-            if _rule:
-                rules.append(_rule)
+            if not _rule:
+                continue
+
+            _rule.context = context if context else item
+
+            rules.append(_rule)
 
     return rules

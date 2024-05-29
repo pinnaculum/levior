@@ -58,12 +58,22 @@ def get_url_config(config: DictConfig,
                    url: URL) -> dict:
     url_config = {
         'cache': False,
-        'ttl': config.cache_ttl_default
+        'ttl': config.cache_ttl_default,
+        'proxy_url': None
     }
 
     for rule in rules:
         if any(reg.search(str(url)) for reg in rule.regexps):
             url_config.update(rule.config)
+
+            # Get the 'proxy' attribute from the rule's context
+            p_url = rule.context.get('proxy')
+
+            if p_url:
+                url_config['proxy_url'] = p_url
+            else:
+                # Default
+                url_config['proxy_url'] = config.get('proxy', None)
 
             # First hit wins
             break
@@ -339,7 +349,7 @@ async def feeds_aggregate(req: Request,
                 etag=cached_etag,
                 last_modified=cached_lastm,
                 timeout=feed_config.get('req_timeout', 10),
-                socks_proxy_url=config.socks5_proxy
+                proxy_url=url_config['proxy_url']
             )
 
             if feed and feed['entries']:
@@ -566,7 +576,6 @@ async def rcontroller_domain(route,
                              cache: diskcache.Cache,
                              **kwargs) -> Response:
     access_log_doc = kwargs.pop('access_log_doc')
-    socksp_url = kwargs.pop('socksp_url')
     url_config = kwargs.pop('url_config')
 
     domain = route['domain']
@@ -596,7 +605,7 @@ async def rcontroller_domain(route,
                     try_url,
                     config,
                     url_config,
-                    socks_proxy_url=socksp_url,
+                    proxy_url=url_config['proxy_url'],
                     verify_ssl=config.verify_ssl,
                     user_agent=config.get('http_user_agent')
                 )
@@ -709,11 +718,6 @@ def create_levior_handler(config: DictConfig,
     ipfilter_allow: list = [
         IP(ip) for ip in config.get('client_ip_allow', [])
     ]
-
-    if config.get('tor') is True:
-        socksp_url = 'socks5://localhost:9050'
-    else:
-        socksp_url = config.socks5_proxy
 
     for mpath, mcfg in config.get('mount', {}).items():
         _type = mcfg.pop('type', None)
@@ -848,7 +852,6 @@ def create_levior_handler(config: DictConfig,
                                  url_config=url_config,
                                  rules=rules,
                                  mountpoints=mountpoints,
-                                 socksp_url=socksp_url,
                                  access_log_doc=access_log_doc)
         else:
             return await error_response(
@@ -887,7 +890,7 @@ def create_levior_handler(config: DictConfig,
                     req.url,
                     config,
                     url_config,
-                    socks_proxy_url=socksp_url,
+                    proxy_url=url_config['proxy_url'],
                     verify_ssl=config.verify_ssl,
                     user_agent=config.get('http_user_agent')
                 )

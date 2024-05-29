@@ -2,7 +2,7 @@ from importlib import resources
 
 
 __appname__ = 'levior'
-__version__ = '1.3.3'
+__version__ = '1.3.4'
 
 
 def bytes_to_humanr(num: int, suffix: str = 'B') -> str:

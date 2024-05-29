@@ -1,6 +1,6 @@
 import aiohttp
+from typing import Optional, List, Union
 from aiohttp.web_exceptions import HTTPNotModified
-from aiohttp_socks import ProxyConnector
 
 from yarl import URL
 import feedparser
@@ -9,6 +9,8 @@ import io
 import logging
 
 import dateutil.parser
+
+from .web import get_proxy_connector
 
 
 logger = logging.getLogger()
@@ -27,17 +29,16 @@ def feed_fromdata(data: str):
 
 
 async def feed_fromurl(url: URL,
-                       etag: str = None,
-                       last_modified: str = None,
-                       socks_proxy_url: str = None,
+                       etag: Optional[str] = None,
+                       last_modified: Optional[str] = None,
+                       proxy_url: Optional[Union[str, List]] = None,
+                       proxy_chain: Optional[List] = None,
                        timeout: int = 10,
                        verify_ssl: bool = True) -> tuple:
+
     headers: dict = {}
 
-    if isinstance(socks_proxy_url, str):  # pragma: no cover
-        connector = ProxyConnector.from_url(socks_proxy_url)
-    else:
-        connector = None
+    connector = get_proxy_connector(proxy_url)
 
     if isinstance(etag, str):
         headers["ETag"] = etag
@@ -63,7 +64,7 @@ async def feed_fromurl(url: URL,
             return response, data, feed, etag, lastm
 
 
-def feed2tinylog(data: str) -> str:
+def feed2tinylog(data: str) -> Optional[str]:
     """
     Convert an RSS or Atom feed to a gemini tinylog
 

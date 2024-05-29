@@ -196,14 +196,20 @@ parser.add_argument(
     '--socks5-proxy',
     dest='socks5_proxy',
     default=None,
-    help="Socks proxy address (e.g: 'localhost:9050')")
+    help="DEPRECATED")
+
+parser.add_argument(
+    '--proxy',
+    dest='proxy',
+    default=None,
+    help="Default proxy URL (e.g: 'socks5://localhost:9050')")
 
 parser.add_argument(
     '--tor',
     dest='tor',
     action='store_true',
     default=False,
-    help="Use tor's default socks proxy (localhost:9050)")
+    help="DEPRECATED")
 
 parser.add_argument(
     '--cert',

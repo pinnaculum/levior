@@ -41,9 +41,19 @@ curl -L -o ~/.local/bin/levior https://gitlab.com/cipres/levior/-/releases/conti
 chmod +x ~/.local/bin/levior
 ```
 
-### Manual Install
+### Manual install
+
+Clone the repo and create a virtualenv:
 
 ```sh
+git clone https://gitlab.com/cipres/levior && cd levior
+python3 -m venv venv; source venv/bin/activate
+```
+
+Upgrade pip and install:
+
+```sh
+pip install -U pip
 pip install .
 ```
 
@@ -58,6 +68,22 @@ For Javascript rendering, install the *js* extra:
 
 ```sh
 pip install '.[js]'
+```
+
+### Manual install (arm, aarch64, Raspberry Pi, and others)
+
+One of the dependencies, *aiogemini*, requires the
+[cryptography](https://pypi.org/project/cryptography/) package, which since
+version *35.0* requires Rust to build, which might not be available on your system.
+If you don't have rust, you can install an older version of the cryptography
+package that does not require rust, by running:
+
+```sh
+pip install -U pip
+
+CRYPTOGRAPHY_DONT_BUILD_RUST=1 pip install 'cryptography==3.4.8'
+
+pip install .
 ```
 
 ## Usage
@@ -80,13 +106,7 @@ levior -c config.yaml
 Once *levior* is running, open your gemini browser and go to
 [gemini://localhost](gemini://localhost).
 
-Socks5 proxies are supported with **--socks5-proxy**. **--tor**
-will use the default socks5 proxy address for Tor (*socks5://localhost:9050*).
-
-```sh
-levior --socks5-proxy "socks5://localhost:9050"
-levior --tor
-```
+Proxies (HTTP, Socks4 and Socks5) are supported.
 
 ### Generating a new configuration file
 
@@ -294,6 +314,70 @@ include:
       URL:
         - https://example.org
         - https://example2.org
+```
+
+### Proxies
+
+#### Default proxy
+
+You can set the default proxy URL with the *proxy* attribute, whose value
+must be a proxy URL or a list of proxy URLs, to establish a proxy chain.
+HTTP, Socks4 and Socks5 proxies are supported.
+
+Defining a single proxy:
+
+```yaml
+proxy: socks5://user:password@localhost:9050
+```
+
+```yaml
+proxy: http://127.0.0.1:8090
+```
+
+To use a proxy chain (Proxy chaining is a technique that allows you to
+use multiple proxies to access the web anonymously and bypass
+geo-restrictions), just declare your proxies as a list (the order matters):
+
+```yaml
+proxy:
+  - socks4://127.0.0.1:1081
+  - socks5://localhost:9050
+  - http://10.0.1.2:8090
+```
+
+#### Random proxies
+
+You can use the OmegaConf resolver called **random** to choose a
+random proxy from a predefined list. The resolver will be called
+on every request, so this means that a proxy URL will be randomly chosen
+from the list for every request:
+
+```yaml
+my_proxies:
+  - http://10.0.1.2:8090
+  - http://10.0.4.2:8092
+  - http://10.0.8.4:8094
+
+proxy: ${random:${my_proxies}}
+```
+
+#### Setting a proxy for a rule
+
+```yaml
+rules:
+  - regexp: "https://freebsd.org"
+    proxy: socks5://localhost:9050
+```
+
+#### Setting a proxy when including another config file
+
+When including one or more config files, you can set the proxy that will
+be used for the included rules:
+
+```yaml
+include:
+  - src: levior:sites/*.yaml
+    proxy: http://127.0.0.1:8090
 ```
 
 ### Feeds aggregator

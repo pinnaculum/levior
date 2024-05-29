@@ -53,7 +53,7 @@ def load_include(path: Union[Path, str],
         traceback.print_exc()
 
 
-def load_config_file(arg: Union[Path, TextIO]) -> tuple:
+def load_config_file(src: Union[Path, str, TextIO]) -> tuple:
     """
     Load a levior config file and returns a tuple containing the
     config (as a DictConfig) and the list of URL rules
@@ -62,10 +62,12 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
     rules: list = []
     file_cfg: DictConfig = None
 
-    if isinstance(arg, Path):
-        fd = open(arg, 'rt')
+    if isinstance(src, (Path, str)):
+        fd = open(src, 'rt')
+    elif isinstance(src, StringIO):
+        fd = src
     else:
-        fd = arg
+        raise ValueError('Invalid source type')
 
     file_cfg = OmegaConf.load(fd)
 
@@ -108,10 +110,13 @@ def load_config_file(arg: Union[Path, TextIO]) -> tuple:
                     if glob_path.name.startswith('_'):
                         continue
 
-                    rules += parse_rules(load_include(glob_path, iparams))
+                    rules += parse_rules(
+                        load_include(glob_path, iparams),
+                        inc  # context
+                    )
             elif not loadt:
                 # Local file
-                rules += parse_rules(load_include(path_ref, iparams))
+                rules += parse_rules(load_include(path_ref, iparams), inc)
 
     return file_cfg, rules
 

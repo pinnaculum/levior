@@ -1,3 +1,16 @@
+## [1.3.4] - 2024-05-29
+
+### Added
+
+- Better support for proxies
+- Configurable proxy & proxy chains for rules
+- Add an OC resolver to generate a random user agent
+
+### Changed
+
+- Use a randomly generated HTTP user agent for every request
+- AppImage: use niess/python-appimage 3.12.3
+
 ## [1.3.3] - 2024-03-19
 
 ### Added

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig
+from typing import Optional, List
 import aiohttp
 import logging
 import re
 import traceback
 
-from aiohttp_socks import ProxyConnector
 from aiogemini import GEMINI_PORT
 
 from pathlib import Path
@@ -13,6 +13,10 @@ from urllib.parse import urlparse
 from urllib.parse import urljoin
 from yarl import URL
 from markdownify import MarkdownConverter
+
+from .web import random_useragent
+from .web import get_proxy_connector
+
 
 try:
     from requests_html import HTML
@@ -38,10 +42,12 @@ class RedirectRequired(Exception):
 async def fetch(url: URL,
                 config: DictConfig,
                 url_config,
-                socks_proxy_url: str = None,
+                socks_proxy_url: Optional[str] = None,
+                proxy_url: Optional[URL] = None,
+                proxy_chain: Optional[List] = None,
                 verify_ssl: bool = True,
                 allow_redirects: bool = False,
-                user_agent: str = None) -> tuple:
+                user_agent: Optional[str] = None) -> tuple:
     """
     :param URL url: The requested URL
     :param DictConfig config: Configuration
@@ -54,13 +60,10 @@ async def fetch(url: URL,
     global rhtml_session
 
     headers = {
-        'User-Agent': user_agent if user_agent else user_agent_default
+        'User-Agent': user_agent if user_agent else random_useragent()
     }  # pragma: no cover
 
-    if socks_proxy_url:  # pragma: no cover
-        connector = ProxyConnector.from_url(socks_proxy_url)
-    else:  # pragma: no cover
-        connector = None
+    connector = get_proxy_connector(proxy_url)
 
     if url.scheme in ['ipfs', 'ipns']:  # pragma: no cover
         # ipfs URL. Route through dweb.link's HTTP gateway

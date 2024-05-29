@@ -58,7 +58,13 @@ verify_ssl: true
 links_mode: paragraph
 
 # Use a socks5 proxy
-# socks5_proxy: socks5://localhost:9050
+# proxy: socks5://localhost:9050
+#
+# Proxy chain
+#
+# proxy:
+#   - socks5://localhost:9050
+#   - http://user:password@127.0.0.1:3128
 
 # include:
 #   - levior:sites/*.yaml
