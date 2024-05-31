@@ -11,6 +11,7 @@ import logging
 import dateutil.parser
 
 from .web import get_proxy_connector
+from .web import random_useragent
 
 
 logger = logging.getLogger()
@@ -33,10 +34,14 @@ async def feed_fromurl(url: URL,
                        last_modified: Optional[str] = None,
                        proxy_url: Optional[Union[str, List]] = None,
                        proxy_chain: Optional[List] = None,
+                       user_agent: Optional[str] = None,
                        timeout: int = 10,
                        verify_ssl: bool = True) -> tuple:
 
-    headers: dict = {}
+    headers = {
+        'User-Agent': user_agent if isinstance(user_agent, str) else
+        random_useragent()
+    }  # pragma: no cover
 
     connector = get_proxy_connector(proxy_url)
 

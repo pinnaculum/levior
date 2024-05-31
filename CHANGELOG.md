@@ -5,6 +5,8 @@
 - Better support for proxies
 - Configurable proxy & proxy chains for rules
 - Add an OC resolver to generate a random user agent
+- Add an OC resolver to generate a custom random user agent with specific
+  params (OS, software, software engine ...)
 
 ### Changed
 

@@ -95,7 +95,9 @@ See [the example config file](https://gitlab.com/cipres/levior/-/raw/master/exam
 
 levior uses the [OmegaConf library](https://omegaconf.readthedocs.io) to
 parse the YAML config files, therefore all the specific syntax elements
-supported by *OmegaConf* can be used in your configuration files.
+supported by *OmegaConf* can be used in your configuration files. levior
+provides several [resolvers](https://omegaconf.readthedocs.io/en/2.3_branch/custom_resolvers.html) that you can use inside your config file.
+
 
 ```sh
 levior
@@ -462,6 +464,62 @@ value types:
 Any other return value type will be ignored.
 
 Checkout [the filters package](https://gitlab.com/cipres/levior/-/tree/master/levior/filters) to see all the available builtin filters.
+
+### OmegaConf resolvers
+
+levior provides a few OC resolvers (which are like functions called when the
+YAML element is accessed).
+
+#### random
+
+Returns a random item from a list.
+
+```yaml
+my_proxies:
+  - http://10.0.1.2:8090
+  - http://10.0.4.2:8092
+  - http://10.0.8.4:8094
+
+proxy: ${random:${my_proxies}}
+```
+
+#### random_user_agent
+
+Returns a random browser user agent string. Takes no argument.
+
+```yaml
+http_user_agent: ${random_user_agent:}
+```
+
+#### rweb_user_agent
+
+Returns a random browser user agent string for specific operating systems,
+browsers and browser engines. The parameters are, in this order:
+
+- Operating system list. e.g: [linux, freebsd]
+- Software list (*optional*). e.g: [firefox, chromium]
+- Software engine list (*optional*). e.g: [webkit,blink]
+- Hardware type list (*optional*). e.g: [mobile]
+
+```yaml
+http_user_agent: ${rweb_user_agent:[linux]}
+```
+
+```yaml
+http_user_agent: ${rweb_user_agent:[linux,mac,freebsd],[firefox]}
+```
+
+```yaml
+http_user_agent: ${rweb_user_agent:[linux,freebsd],[],[webkit]}
+```
+
+```yaml
+http_user_agent: ${rweb_user_agent:[linux,windows,mac_os_x],[],[],[mobile]}
+```
+
+See [the random_user_agent params list](https://github.com/Luqman-Ud-Din/random_user_agent/blob/master/random_user_agent/params.py) for a list of params.
+
+*Note*: passing invalid parameters will raise a *ValueError* exception.
 
 ## Javascript rendering
 

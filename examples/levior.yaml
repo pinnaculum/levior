@@ -20,6 +20,7 @@ port: 1965
 
 # Set a custom HTTP user agent
 # http_user_agent: "NetSurf/1.2 (Linux; x86_64)"
+# http_user_agent: ${rweb_user_agent:[linux,freebsd],[firefox]}
 
 # Javascript rendering
 #
@@ -88,6 +89,7 @@ links_mode: paragraph
 urules:
   - url: "https?://searx.be"
     images: false
+    http_user_agent: ${rweb_user_agent:[linux,freebsd],[firefox]}
 
   - url: ".html?$"
     cache: true

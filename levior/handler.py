@@ -59,6 +59,7 @@ def get_url_config(config: DictConfig,
     url_config = {
         'cache': False,
         'ttl': config.cache_ttl_default,
+        'user_agent': None,
         'proxy_url': None
     }
 
@@ -74,6 +75,11 @@ def get_url_config(config: DictConfig,
             else:
                 # Default
                 url_config['proxy_url'] = config.get('proxy', None)
+
+            url_config['user_agent'] = rule.context.get(
+                'http_user_agent',
+                config.get('http_user_agent')
+            )
 
             # First hit wins
             break
@@ -349,7 +355,8 @@ async def feeds_aggregate(req: Request,
                 etag=cached_etag,
                 last_modified=cached_lastm,
                 timeout=feed_config.get('req_timeout', 10),
-                proxy_url=url_config['proxy_url']
+                proxy_url=url_config['proxy_url'],
+                user_agent=url_config['user_agent']
             )
 
             if feed and feed['entries']:
@@ -606,8 +613,8 @@ async def rcontroller_domain(route,
                     config,
                     url_config,
                     proxy_url=url_config['proxy_url'],
-                    verify_ssl=config.verify_ssl,
-                    user_agent=config.get('http_user_agent')
+                    user_agent=url_config['user_agent'],
+                    verify_ssl=config.verify_ssl
                 )
             except crawler.RedirectRequired as redirect:
                 return await redirect_response(
@@ -892,7 +899,7 @@ def create_levior_handler(config: DictConfig,
                     url_config,
                     proxy_url=url_config['proxy_url'],
                     verify_ssl=config.verify_ssl,
-                    user_agent=config.get('http_user_agent')
+                    user_agent=url_config['user_agent']
                 )
             except crawler.RedirectRequired as redirect:
                 return await redirect_response(req, str(redirect.url))

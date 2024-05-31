@@ -60,7 +60,8 @@ async def fetch(url: URL,
     global rhtml_session
 
     headers = {
-        'User-Agent': user_agent if user_agent else random_useragent()
+        'User-Agent': user_agent if isinstance(user_agent, str) else
+        random_useragent()
     }  # pragma: no cover
 
     connector = get_proxy_connector(proxy_url)
