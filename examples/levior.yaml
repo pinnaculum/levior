@@ -20,7 +20,8 @@ port: 1965
 
 # Set a custom HTTP user agent
 # http_user_agent: "NetSurf/1.2 (Linux; x86_64)"
-# http_user_agent: ${rweb_user_agent:[linux,freebsd],[firefox]}
+# http_user_agent: ${ua_roulette:}
+# http_user_agent: ${custom_ua_roulette:[linux,freebsd],[firefox]}
 
 # Javascript rendering
 #
@@ -52,6 +53,11 @@ port: 1965
 # instruct the proxy to cache the page for x days (or forever)
 #
 # page_cachelinks_show: true
+#
+# HTTP headers
+#
+# http_headers:
+#   Accept-Language: en-US,fr-CA
 
 verify_ssl: true
 
@@ -89,7 +95,7 @@ links_mode: paragraph
 urules:
   - url: "https?://searx.be"
     images: false
-    http_user_agent: ${rweb_user_agent:[linux,freebsd],[firefox]}
+    http_user_agent: ${custom_ua_roulette:[linux,freebsd],[firefox]}
 
   - url: ".html?$"
     cache: true

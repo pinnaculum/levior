@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from omegaconf import DictConfig
-from typing import Optional, List
+from typing import Optional, List, Mapping
+import asyncio
 import aiohttp
 import logging
 import re
@@ -39,19 +40,32 @@ class RedirectRequired(Exception):
     url: URL
 
 
+async def on_request_start(session, trace_config_ctx, params):
+    trace_config_ctx.request_start = asyncio.get_event_loop().time()
+
+
+async def on_request_end(session, trace_config_ctx, params):
+    elapsed_time = round((
+        asyncio.get_event_loop().time() - trace_config_ctx.request_start
+    ) * 1000)
+
+    print(f'Req time: {elapsed_time} msecs, '
+          f'headers: {dict(params.response.request_info.headers)}')
+
+
 async def fetch(url: URL,
                 config: DictConfig,
                 url_config,
-                socks_proxy_url: Optional[str] = None,
                 proxy_url: Optional[URL] = None,
                 proxy_chain: Optional[List] = None,
+                trace: bool = False,
                 verify_ssl: bool = True,
                 allow_redirects: bool = False,
+                http_headers: Optional[Mapping[str, str]] = {},
                 user_agent: Optional[str] = None) -> tuple:
     """
     :param URL url: The requested URL
     :param DictConfig config: Configuration
-    :param str socks_proxy_url: URL of the socks proxy to use
     :param bool verify_ssl: Verify SSL certificate validity
     :param str user_agent: HTTP user agent
     :rtype: tuple
@@ -64,7 +78,27 @@ async def fetch(url: URL,
         random_useragent()
     }  # pragma: no cover
 
-    connector = get_proxy_connector(proxy_url)
+    if isinstance(http_headers, dict):
+        for header, value in http_headers.items():
+            if isinstance(value, str):
+                headers[header] = value
+
+    if proxy_url:
+        connector = get_proxy_connector(proxy_url)
+    else:
+        connector = aiohttp.TCPConnector(
+            limit=20,
+            limit_per_host=5,
+            use_dns_cache=False,
+            force_close=True
+        )
+
+    if trace:
+        trace_config = aiohttp.TraceConfig()
+        trace_config.on_request_start.append(on_request_start)
+        trace_config.on_request_end.append(on_request_end)
+    else:
+        trace_config = None
 
     if url.scheme in ['ipfs', 'ipns']:  # pragma: no cover
         # ipfs URL. Route through dweb.link's HTTP gateway
@@ -77,7 +111,9 @@ async def fetch(url: URL,
             fragment=url.fragment
         )
 
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with aiohttp.ClientSession(
+            trace_configs=[trace_config] if trace_config else [],
+            connector=connector) as session:
         try:
             async with session.get(url, headers=headers,
                                    allow_redirects=allow_redirects,

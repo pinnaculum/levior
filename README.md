@@ -382,6 +382,17 @@ include:
     proxy: http://127.0.0.1:8090
 ```
 
+### HTTP headers
+
+In a rule or at the top of the config file, you can set specific HTTP headers
+that will be used when making HTTP requests:
+
+```yaml
+http_headers:
+  Accept-Language: en-US
+  Accept-Charset: utf-8
+```
+
 ### Feeds aggregator
 
 It is possible to aggregate multiple Atom/RSS web feeds into a single
@@ -483,15 +494,19 @@ my_proxies:
 proxy: ${random:${my_proxies}}
 ```
 
-#### random_user_agent
+#### ua_roulette
+
+*User Agent roulette*.
 
 Returns a random browser user agent string. Takes no argument.
 
 ```yaml
-http_user_agent: ${random_user_agent:}
+http_user_agent: ${ua_roulette:}
 ```
 
-#### rweb_user_agent
+#### custom_ua_roulette
+
+*Custom User Agent roulette*.
 
 Returns a random browser user agent string for specific operating systems,
 browsers and browser engines. The parameters are, in this order:
@@ -502,22 +517,22 @@ browsers and browser engines. The parameters are, in this order:
 - Hardware type list (*optional*). e.g: [mobile]
 
 ```yaml
-http_user_agent: ${rweb_user_agent:[linux]}
+http_user_agent: ${custom_ua_roulette:[linux]}
 ```
 
 ```yaml
-http_user_agent: ${rweb_user_agent:[linux,mac,freebsd],[firefox]}
+http_user_agent: ${custom_ua_roulette:[linux,mac,freebsd],[firefox]}
 ```
 
 ```yaml
-http_user_agent: ${rweb_user_agent:[linux,freebsd],[],[webkit]}
+http_user_agent: ${custom_ua_roulette:[linux,freebsd],[],[webkit]}
 ```
 
 ```yaml
-http_user_agent: ${rweb_user_agent:[linux,windows,mac_os_x],[],[],[mobile]}
+http_user_agent: ${custom_ua_roulette:[linux,windows,mac_os_x],[],[],[mobile]}
 ```
 
-See [the random_user_agent params list](https://github.com/Luqman-Ud-Din/random_user_agent/blob/master/random_user_agent/params.py) for a list of params.
+See [the random_user_agent documentation](https://github.com/Luqman-Ud-Din/random_user_agent/blob/master/random_user_agent/params.py) for a list of params.
 
 *Note*: passing invalid parameters will raise a *ValueError* exception.
 

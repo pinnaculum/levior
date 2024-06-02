@@ -59,6 +59,7 @@ def get_url_config(config: DictConfig,
     url_config = {
         'cache': False,
         'ttl': config.cache_ttl_default,
+        'http_headers': {},
         'user_agent': None,
         'proxy_url': None
     }
@@ -76,10 +77,20 @@ def get_url_config(config: DictConfig,
                 # Default
                 url_config['proxy_url'] = config.get('proxy', None)
 
+            # UA
             url_config['user_agent'] = rule.context.get(
                 'http_user_agent',
                 config.get('http_user_agent')
             )
+
+            # HTTP headers
+            try:
+                url_config['http_headers'] = dict(rule.context.get(
+                    'http_headers',
+                    config.get('http_headers', {})
+                ))
+            except Exception:
+                pass
 
             # First hit wins
             break
@@ -899,7 +910,8 @@ def create_levior_handler(config: DictConfig,
                     url_config,
                     proxy_url=url_config['proxy_url'],
                     verify_ssl=config.verify_ssl,
-                    user_agent=url_config['user_agent']
+                    user_agent=url_config['user_agent'],
+                    http_headers=url_config['http_headers']
                 )
             except crawler.RedirectRequired as redirect:
                 return await redirect_response(req, str(redirect.url))
