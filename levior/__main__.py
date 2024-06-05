@@ -142,7 +142,8 @@ def get_config(cli_cfg: DictConfig) -> DictConfig:
     return config, rules
 
 
-def levior_configure_server(cli_cfg) -> Tuple[DictConfig, Server]:
+def levior_configure_server(cli_cfg,
+                            graph=None) -> Tuple[DictConfig, Server]:
     """
     Create a levior server from the command-line config arguments
     or by using a YAML config file.
@@ -171,6 +172,7 @@ def levior_configure_server(cli_cfg) -> Tuple[DictConfig, Server]:
         create_server_ssl_context(cert_path, key_path),
         create_levior_handler(
             config, cache, rules,
+            graph=graph,
             access_log=load_cached_access_log(cache)
         ),
         host=config.get('hostname', 'localhost'),

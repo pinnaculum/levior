@@ -4,11 +4,13 @@ import re
 import sys
 import traceback
 import os.path
+import io
 
 from yarl import URL
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional
 from datetime import datetime
+from rdflib import Literal
 
 from aiogemini import GEMINI_PORT
 from aiogemini import Status
@@ -48,6 +50,8 @@ from .response import redirect_response
 from .response import proxy_reqrefused_response
 from .response import markdownification_error
 from .response import gmidoc_response
+
+from . import rdf
 
 
 logger = logging.getLogger()
@@ -98,6 +102,10 @@ def get_url_config(config: DictConfig,
     return url_config
 
 
+def urlq(req: Request) -> Optional[str]:
+    return list(req.url.query.keys()).pop(0) if req.url.query else None
+
+
 def gemtext_title_extract(gemtext: str) -> str:
     for line in gemtext.splitlines():
         ma = re.match(r'^#\s(.*)$', line)
@@ -137,6 +145,7 @@ async def build_response(req: Request,
                          cache,
                          rsc_ctype: str,
                          data: bytes,
+                         graph=None,
                          domain: str = None,
                          gemini_server_host: str = None,
                          is_cached: bool = False,
@@ -154,6 +163,7 @@ async def build_response(req: Request,
     :param bool is_cached: Cached status in disk cache for this URL
     """
 
+    loop = asyncio.get_event_loop()
     fdoc: GmiDocument = None
     loop = asyncio.get_event_loop()
     gemtext: str = None
@@ -257,6 +267,18 @@ async def build_response(req: Request,
 
             gemtext = '\n'.join(
                 [geml for geml in fdoc.emit_trim_gmi()]
+            )
+
+        graph_pages = config.get('graph_visited_pages', True)
+
+        if graph is not None and graph_pages is True:
+            # Graph the page
+            loop.call_later(
+                3.0,
+                rdf.graph_resource,
+                graph, gemtext, req.url,
+                rsc_ctype,
+                doc_title
             )
 
         # Prepend the cache links if this page is not cached
@@ -469,6 +491,7 @@ async def rcontroller_root(route,
     """
     mountpoints = kwargs.pop('mountpoints')
     mapper = kwargs.pop('mapper')
+    graph = kwargs.pop('graph')
     rules = kwargs.pop('rules', [])
 
     doc = GmiDocument()
@@ -480,6 +503,12 @@ async def rcontroller_root(route,
 
     doc.append('=> /cache  Cache')
     doc.append('=> /search Web Search')
+
+    if graph is not None:
+        doc.append(f'# Graph: {graph.identifier}')
+        doc.append('=> /graph  Graph index')
+        doc.append('=> /graph/search  Graph search')
+        doc.append('=> /graph/ttl  Render graph (format: ttl)')
 
     routes = [r for r in mapper.matchlist if r.name]
     if routes:
@@ -653,6 +682,7 @@ async def rcontroller_domain(route,
         cache,
         rsc_ctype,
         data,
+        graph=kwargs.pop('graph'),
         gemini_server_host=config.hostname,
         domain=domain,
         is_cached=cached is not None,
@@ -687,7 +717,7 @@ async def rcontroller_urlmap(route,
                              config: DictConfig,
                              cache: diskcache.Cache,
                              **kwargs) -> Response:
-    qv = list(req.url.query.keys()).pop(0) if req.url.query else None
+    qv = urlq(req)
     input_url = URL(route['input_url']) if route['input_url'] else None
 
     if input_url:
@@ -720,9 +750,58 @@ async def rcontroller_urlmap(route,
     )
 
 
+async def rcontroller_graph(route,
+                            req: Request,
+                            config: DictConfig,
+                            cache: diskcache.Cache,
+                            **kwargs) -> Response:
+    query = urlq(req)
+    gemtext = str()
+    graph = kwargs.pop('graph')
+
+    if route['action'] == 'search_all':
+        if not query:
+            return await input_response(
+                req,
+                'Please enter a search query'
+            )
+
+        qres = graph.query(rdf.search_query,
+                           initBindings={'query': Literal(query)})
+    elif route['action'] == 'index':
+        qres = graph.query(rdf.index_query)
+    elif route['action'] == 'render_ttl':
+        # Serialize the graph as ttl
+
+        buff = io.BytesIO()
+        graph.serialize(buff, format='ttl')
+        buff.seek(0, 0)
+
+        return await data_response(
+            req,
+            buff.getvalue(),
+            'text/turtle'
+        )
+
+    gemtext += f'# {len(qres)} results\n'
+    for res in qres:
+        puri = res.get('puri')  # page URI
+        link = res.get('link')  # a link referenced in the page
+        title = res.get('title')
+
+        if link:
+            gemtext += f'=> {link} {title if title else link}\n'
+        else:
+            gemtext += f'=> {puri} {title if title else puri}\n'
+
+    return await data_response(req, gemtext.encode(),
+                               'text/gemini')
+
+
 def create_levior_handler(config: DictConfig,
                           cache: diskcache.Cache,
                           rules,
+                          graph=None,
                           access_log: GmiDocument = None) -> _RequestHandler:
     loop = asyncio.get_event_loop()
     mountpoints: dict = {}
@@ -779,6 +858,17 @@ def create_levior_handler(config: DictConfig,
     srv_routes.connect(None, "/",
                        controller='root',
                        action='home')
+
+    # RDF graph: index
+    srv_routes.connect(None, "/graph",
+                       controller='graph',
+                       action='index')
+    srv_routes.connect(None, "/graph/search",
+                       controller='graph',
+                       action='search_all')
+    srv_routes.connect(None, "/graph/ttl",
+                       controller='graph',
+                       action='render_ttl')
 
     # "go to" input page
     with srv_routes.submapper(controller='domain_prompt') as m:
@@ -866,6 +956,7 @@ def create_levior_handler(config: DictConfig,
         if handler:
             return await handler(route, req, config, cache,
                                  reqd=reqd,
+                                 graph=graph,
                                  mapper=srv_routes,
                                  url_config=url_config,
                                  rules=rules,
@@ -929,6 +1020,7 @@ def create_levior_handler(config: DictConfig,
             cache,
             rsc_ctype,
             data,
+            graph=graph,
             domain=req.url.host,
             is_cached=cached is not None,
             proxy_mode=True

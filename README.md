@@ -8,13 +8,14 @@
 [Gemini](https://geminiprotocol.net) proxy.
 It converts web pages (as well as Atom/RSS feeds) on-the-fly to
 the [gemtext](https://geminiprotocol.net/docs/gemtext.gmi) format,
-allowing you to browse regular web pages with any Gemini browser without having
-to suffer the heavyness associated with certain technologies of the modern web.
+allowing you to browse the web with any Gemini browser.
 
-*levior* supports Javascript rendering and can therefore be used to browse
+- Builds an (RDF) graph from the visited pages using linked data.
+
+- Supports Javascript rendering and can therefore be used to browse
 dynamic websites.
 
-*levior* also supports serving other types of content, like ZIM files (the
+- Supports serving other types of content, like ZIM files (the
 archive format used by Wikipedia), making it possible to browse complete wikis
 through Gemini ([see the config file](https://gitlab.com/cipres/levior/-/raw/master/examples/levior.zim.yaml)).
 
@@ -34,7 +35,7 @@ at the following misfin address: *cipres AT hashnix.club*.
 
 ### AppImage
 
-You can get the latest AppImage [here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in *~/.local/bin*:
+You can get the latest AppImage (for the *x86_64* platform) [here](https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage). This would install levior in *~/.local/bin*:
 
 ```sh
 curl -L -o ~/.local/bin/levior https://gitlab.com/cipres/levior/-/releases/continuous-master/downloads/levior-latest-x86_64.AppImage
@@ -158,6 +159,22 @@ allowed IP addresses or networks in your config file.
 client_ip_allow:
   - 127.0.0.1
   - 10.0.1.0/24
+```
+
+## RDF
+
+*levior* uses an RDF graph to store various attributes about the pages
+that are accessed via the proxy:
+
+- The page's title
+- Every link contained in the page is defined as being [referenced](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#http://purl.org/dc/terms/references) by the source page
+- Gemtext headers in the page are the [table of contents](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#http://purl.org/dc/terms/tableOfContents)
+
+If you want to disable the automatic graphing of pages, disable
+*graph_visited_pages* in the config:
+
+```yaml
+graph_visited_pages: false
 ```
 
 ## URL mapping
@@ -672,6 +689,14 @@ Shows the proxy's access log.
 ### /cache
 
 Lists the objects stored in the cache.
+
+### /graph
+
+RDF graph index
+
+### /graph/search
+
+RDF graph search endpoint
 
 ### /search
 

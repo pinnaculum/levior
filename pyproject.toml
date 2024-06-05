@@ -39,7 +39,9 @@ dependencies = [
     "Routes==2.5.1",
     "trimgmi==0.3.0",
     "python-dateutil>=2.8.0",
-    "random-user-agent==1.0.1"
+    "random-user-agent==1.0.1",
+    "rdflib>=7.0.0",
+    "berkeleydb>=18.1.8"
 ]
 dynamic = ["version"]
 

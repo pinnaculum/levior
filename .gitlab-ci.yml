@@ -44,8 +44,7 @@ build:
   only:
     - master
     - devel
-    - zim
-    - http-proxy
+    - rdf
   script:
     - apt-get -y update
     - apt-get install -y fuse
@@ -80,6 +79,7 @@ release:
   only:
     - master
     - devel
+    - rdf
   script:
     - apk add curl
 

@@ -5,8 +5,10 @@ import functools
 import logging
 import traceback
 import signal
+from pathlib import Path
 from asyncio import tasks
 
+import appdirs
 import omegacli
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
@@ -14,9 +16,12 @@ from daemonize import Daemonize
 from aiogemini import GEMINI_PORT
 from yarl import URL
 
-from levior import crawler
-from levior import __version__
-from levior.__main__ import levior_configure_server
+
+from . import __appname__
+from . import crawler
+from . import __version__
+from .__main__ import levior_configure_server
+from .rdf import rdf_graph_init
 
 try:
     from pyppeteer.chromium_downloader import (check_chromium,
@@ -247,7 +252,10 @@ def parse_args(args: list = None) -> DictConfig:
         return dargs
 
 
-async def stop_process(server, sig, loop) -> None:
+async def stop_process(server, graph, sig, loop) -> None:
+    if graph is not None:
+        graph.close()
+
     if crawler.rhtml_session:
         # Close the AsyncHTMLSession, this will stop the browser process
         await crawler.rhtml_session.close()
@@ -262,6 +270,11 @@ async def stop_process(server, sig, loop) -> None:
 
 
 def run():
+    data_dir: Path = Path(appdirs.user_data_dir(__appname__))
+    rdf_db_path = data_dir.joinpath('graph.db')
+
+    graph = rdf_graph_init(rdf_db_path)
+
     loop = asyncio.get_event_loop()
     cli_cfg = parse_args()
 
@@ -284,14 +297,14 @@ def run():
     logger = logging.getLogger()
     logger.setLevel('DEBUG')
 
-    config, server = levior_configure_server(cli_cfg)
+    config, server = levior_configure_server(cli_cfg, graph)
 
     for sig in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]:
         loop.add_signal_handler(
             sig,
             functools.partial(
                 asyncio.create_task,
-                stop_process(server, sig, loop)
+                stop_process(server, graph, sig, loop)
             )
         )
 
@@ -328,6 +341,9 @@ def run():
                 f'# levior v{__version__}: listening on '
                 f'{config.hostname}:{config.port}'
             )
+
+            if graph is not None:
+                logger.info(f'## RDF graph identifier: {graph.identifier}')
 
             logger.info(f'=> {access_url}  levior interface')
 

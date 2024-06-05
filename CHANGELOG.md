@@ -1,3 +1,9 @@
+## [1.3.5] - 2024-06-05
+
+### Added
+
+- Use linked data to store relations between pages in an RDF graph
+
 ## [1.3.4] - 2024-05-29
 
 ### Added
