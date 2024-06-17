@@ -271,6 +271,8 @@ async def stop_process(server, graph, sig, loop) -> None:
 
 def run():
     data_dir: Path = Path(appdirs.user_data_dir(__appname__))
+    data_dir.mkdir(parents=True, exist_ok=True)
+
     rdf_db_path = data_dir.joinpath('graph.db')
 
     graph = rdf_graph_init(rdf_db_path)
