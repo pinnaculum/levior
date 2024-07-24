@@ -488,7 +488,7 @@ class TestLeviorModes:
 
         # Test that the content type is properly set
         resp = await client.local_req(
-            'https://www.freebsd.org/images/logo-red.png'
+            'https://www.freebsd.org/images/banner-red.png'
         )
         assert resp.status == Status.SUCCESS
         assert resp.content_type == 'image/png'
