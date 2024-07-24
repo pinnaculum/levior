@@ -324,19 +324,16 @@ class TestEntryPoint:
         # Run levior via the console entrypoint and test that
         # it's up and serving requests
 
-        proc = await asyncio.create_subprocess_exec('levior', *args)
+        await asyncio.create_subprocess_exec('levior', *args)
         await asyncio.sleep(3)
 
         resp, doc = await client.request_gmidoc(
             URL('gemini://localhost/cache'))
         assert resp.status == Status.SUCCESS
 
-        try:
-            proc.terminate()
-        except Exception:
-            pidf = Path('levior.pid')
-            if pidf.is_file():
-                os.kill(int(pidf.read_text()), signal.SIGTERM)
+        pidf = Path('levior.pid')
+        if pidf.is_file():
+            os.kill(int(pidf.read_text()), signal.SIGTERM)
 
     @pytest.mark.asyncio
     async def test_config_generate(self, tmpdir):
