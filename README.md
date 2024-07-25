@@ -138,7 +138,7 @@ first need to generate your own SSL keypair. Then, in your config file, set the
 *cert* and *key* attributes to point to the file paths of your SSL certificate
 and key.
 
-```yaml hl_lines_="2 3"
+```yaml hl_lines="2 3"
 hostname: 'mydomain.com'
 cert: 'mydomain.crt'
 key: 'mydomain.key'
