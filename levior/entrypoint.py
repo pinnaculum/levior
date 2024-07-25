@@ -218,15 +218,15 @@ parser.add_argument(
 
 parser.add_argument(
     '--cert',
-    dest='gemini_cert',
+    dest='cert',
     default=None,
-    help="Path to Gemini server certificate")
+    help="SSL certificate file path")
 
 parser.add_argument(
     '--key',
-    dest='gemini_key',
+    dest='key',
     default=None,
-    help="Path to Gemini server key")
+    help="SSL key file path")
 
 parser.add_argument(
     '--version',

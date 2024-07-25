@@ -128,6 +128,24 @@ daemonize: true
 pid_file_path: levior.pid
 ```
 
+## Custom SSL certificate
+
+By default, *levior* will use a built-in SSL certificate and key that is
+appropriate when the service is listening on *localhost*.
+
+If you are configuring *levior* to listen on a non-local interface, you will
+first need to generate your own SSL keypair. Then, in your config file, set the
+*cert* and *key* attributes to point to the file paths of your SSL certificate
+and key.
+
+```yaml hl_lines_="2 3"
+hostname: 'mydomain.com'
+cert: 'mydomain.crt'
+key: 'mydomain.key'
+```
+
+You can also use the **--cert** and **-key** command-line parameters.
+
 ## Logging
 
 ### Access log

@@ -11,6 +11,13 @@ port: 1965
 
 # Service mode. Can be 'server', 'proxy', or 'proxy,server'
 # mode: 'proxy'
+#
+# Custom SSL certificate and key.
+# If you don't specify the filepaths of a custom cert and key, levior uses a
+# built-in SSL cert (for 'localhost')
+#
+# cert: 'mydomain.crt'
+# key: 'mydomain.key'
 
 # Run as a daemon
 # daemonize: true

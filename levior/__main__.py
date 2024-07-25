@@ -161,8 +161,8 @@ def levior_configure_server(cli_cfg,
     except AssertionError:  # pragma: no cover
         raise ValueError(f'Invalid modes config: {config.mode}')
 
-    if config.get('gemini_cert') and config.get('gemini_key'):
-        cert_path, key_path = config.gemini_cert, config.gemini_key
+    if config.get('cert') and config.get('key'):
+        cert_path, key_path = config.cert, config.key
     else:
         cert_path, key_path = default_cert_paths()
 
